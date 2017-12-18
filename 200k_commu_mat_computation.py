@@ -121,7 +121,7 @@ def cal_comm_mat_UBB(path_str):
     t3 = time.time()
     print 'save res of %s cost %2.f seconds' % (path_str, t3 - t2)
 
-def cal_comm_mat_UUB(path_str,alpha,cikm=False):
+def cal_comm_mat_UUB(path_str,cikm=False):
     '''
         calculate commuting matrix for U-*-U-pos-B style
     '''
@@ -228,22 +228,25 @@ def cal_comm_mat_UUB(path_str,alpha,cikm=False):
     K = 500
 
     # M4 matrix
-    uid_filename = dir_ + 'uids.txt'
-    print 'run generate_M4 for 10k users in ', uid_filename
-    lines = open(uid_filename, 'r').readlines()
-    uids = [int(l.strip()) for l in lines]
-    uid2ind = {v:k for k,v in enumerate(uids)}
-    ind2uid = reverse_map(uid2ind)
+    # uid_filename = dir_ + 'uids.txt'
+    # print 'run generate_M4 for 10k users in ', uid_filename
+    # lines = open(uid_filename, 'r').readlines()
+    # uids = [int(l.strip()) for l in lines]
+    # uid2ind = {v:k for k,v in enumerate(uids)}
+    # ind2uid = reverse_map(uid2ind)
 
-    usocial_filename = dir_ + 'user_social.txt'
-    usocial = np.loadtxt(usocial_filename, dtype=int)
-    adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
-    B_matrix = adj_uu.multiply(adj_uu_t)
-    # U_matrix = adj_uu-B_matrix
-    M4_matrix = B_matrix.dot(B_matrix).multiply(B_matrix)
+    # usocial_filename = dir_ + 'user_social.txt'
+    # usocial = np.loadtxt(usocial_filename, dtype=int)
+    # adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
+    # B_matrix = adj_uu.multiply(adj_uu_t)
+    # # U_matrix = adj_uu-B_matrix
+    # M4_matrix = B_matrix.dot(B_matrix).multiply(B_matrix)
     
-    UBUB_m4 = (alpha*M4_matrix+(1-alpha)*adj_uu).dot(UBUB)
-    triplets = get_topK_items(UBUB_m4, ind2uid, ind2bid, topK=K)
+    # UBUB_m4 = (alpha*M4_matrix+(1-alpha)*adj_uu).dot(UBUB)
+    # triplets = get_topK_items(UBUB_m4, ind2uid, ind2bid, topK=K)
+    
+    #normal way
+    triplets = get_topK_items(UBUB, ind2uid, ind2bid, topK=K)
     wfilename = dir_ + 'sim_res/path_count/%s_top%s.res' % (path_str, K)
     save_triplets(wfilename, triplets)
     #save_comm_res(path_str, wfilename, UBUB, ind2uid, ind2bid)
@@ -463,7 +466,7 @@ def cal_rar_block(RA, nR, ind2rid, step=10000, topK=100):
         import pdb;pdb.set_trace()
     return RAR
 
-def cal_yelp_all(split_num, dt,alpha):
+def cal_yelp_all(split_num, dt):
     global dir_
     dir_ = 'data/%s/exp_split/%s/' % (dt, split_num)
 
@@ -471,13 +474,13 @@ def cal_yelp_all(split_num, dt,alpha):
         cal_comm_mat_UBB(path_str)
 
     for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB', 'UUB']:
-        cal_comm_mat_UUB(path_str,alpha)
+        cal_comm_mat_UUB(path_str)
 
     for path_str in ['URPSRUB', 'URNSRUB']:
         cal_rar(path_str)
         cal_comm_mat_USUB(path_str)
 
-def cal_cikm_yelp(split_num,alpha):
+def cal_cikm_yelp(split_num):
     global dir_
     dir_ = 'data/cikm/yelp/exp_split/%s/' % split_num
     res_dir = dir_ + 'sim_res/path_count/'
@@ -487,26 +490,26 @@ def cal_cikm_yelp(split_num,alpha):
     #for path_str in ['UPBUB', 'UNBUB', 'UPBCatBUB', 'UNBCatBUB','UPBCityBUB', 'UNBCityBUB', 'UUB', 'UCompUB']:
     for path_str in ['UCompUB']:
         print 'process cikm yelp, split=%s, path_str=%s...' % (split_num, path_str)
-        cal_comm_mat_UUB(path_str, alpha,cikm=True)
+        cal_comm_mat_UUB(path_str,cikm=True)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 5:
+    if len(sys.argv) == 4:
         dt = sys.argv[1]
         path_str = sys.argv[2]
         split_num = int(sys.argv[3])
-        alpha = float(sys.argv[4])
-        print("alpha: ")+str(alpha)
+        # alpha = float(sys.argv[4])
+        # print("alpha: ")+str(alpha)
         if dt == 'UBB':
             cal_comm_mat_UBB(path_str)
         elif dt == 'UUB':
-            cal_comm_mat_UUB(path_str,alpha)
+            cal_comm_mat_UUB(path_str)
         elif dt == 'USUB':
             cal_comm_mat_USUB(path_str)
         elif dt == 'RAR':
             cal_rar(path_str)
         elif path_str == 'all':
-            cal_yelp_all(split_num, dt,alpha)
+            cal_yelp_all(split_num, dt)
         elif dt == 'cikm':
             split_num = int(sys.argv[2])
-            cal_cikm_yelp(split_num,alpha)
+            cal_cikm_yelp(split_num)

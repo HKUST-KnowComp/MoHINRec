@@ -94,6 +94,9 @@ def run_all_yelp():
         run(path_str)
    # for path_str in ['URPSRUB', 'URNSRUB']:
     #    run(path_str)
+    for path_str in ['UPBUB_U', 'UNBUB_U', 'URPARUB_U', 'URNARUB_U', 'UUB_PB','UUB_NB','UUB_U']:
+        run(path_str)
+
     for path_str in ['ratings_only']:
         run(path_str)
 

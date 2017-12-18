@@ -8,7 +8,8 @@ dt: yelp-50k # scale of data
 data_dir: data/dt/exp_split/1/ # data dir for this exp, dt will be replaced by the dt string in the running time
 train_filename: ratings_train_1.txt
 test_filename: ratings_test_1.txt
-meta_graphs: ['ratings_only', 'URPSRUB', 'URNSRUB', 'UPBCatB', 'UPBStarsB', 'UPBStateB', 'UPBCityB', 'UPBUB', 'UNBUB', 'UUB', 'URPARUB', 'URNARUB'] # meta-graphs used in 
+# meta_graphs: ['ratings_only', 'URPSRUB', 'URNSRUB', 'UPBCatB', 'UPBStarsB', 'UPBStateB', 'UPBCityB', 'UPBUB', 'UNBUB', 'UUB', 'URPARUB', 'URNARUB'] # meta-graphs used in 
+meta_graphs: ['ratings_only', 'UPBUB', 'UNBUB', 'UUB', 'URPARUB', 'URNARUB','UPBUB_U', 'UNBUB_U', 'URPARUB_U', 'URNARUB_U', 'UUB_PB','UUB_NB','UUB_U'] # meta-graphs used in 
 topK: 500 # topK neighbours saved in meta-graph based similarity computation, used to specify the corresponding user and item latent features.
 
 # Model parameters
