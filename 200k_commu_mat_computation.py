@@ -180,7 +180,7 @@ def cal_comm_mat_UUB(path_str,cikm=False):
         adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
 
         start = time.time()
-        UBU = adj_uu.dot(adj_uu_t)
+        UBU = adj_uu
         print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
 
     elif path_str == 'UCompUB':
@@ -244,6 +244,168 @@ def cal_comm_mat_UUB(path_str,cikm=False):
     
     # UBUB_m4 = (alpha*M4_matrix+(1-alpha)*adj_uu).dot(UBUB)
     # triplets = get_topK_items(UBUB_m4, ind2uid, ind2bid, topK=K)
+    
+    #normal way
+    triplets = get_topK_items(UBUB, ind2uid, ind2bid, topK=K)
+    wfilename = dir_ + 'sim_res/path_count/%s_top%s.res' % (path_str, K)
+    save_triplets(wfilename, triplets)
+    #save_comm_res(path_str, wfilename, UBUB, ind2uid, ind2bid)
+    print 'finish saving %s %s entries in %s, cost %.2f seconds' % (len(triplets), path_str, wfilename, time.time() - start)
+
+def cal_comm_mat_UUB_with_motif(path_str,cikm=False):
+    '''
+        calculate commuting matrix for U-*-U-pos-B style
+    '''
+    uid_filename = dir_ + 'uids.txt'
+    bid_filename = dir_ + 'bids.txt'
+    upb_filename = dir_ + 'uid_pos_bid.txt'
+    if not cikm:
+        rid_filename = dir_ + 'rids.txt'
+        aid_filename = dir_ + 'aids.txt'
+
+    print 'cal commut mat with motif for %s, filenames: %s, %s, %s' % (path_str, uid_filename, bid_filename, upb_filename)
+    uids, uid2ind, ind2uid = load_eids(uid_filename, 'user')
+    bids, bid2ind, ind2bid = load_eids(bid_filename, 'biz')
+    if not cikm:
+        rids, rid2ind, ind2rid = load_eids(rid_filename, 'review')
+        aids, aid2ind, ind2aid = load_eids(aid_filename, 'aspect')
+
+    upb = np.loadtxt(upb_filename, dtype=np.int64)
+    adj_upb, adj_upb_t = generate_adj_mat(upb, uid2ind, bid2ind)
+
+    if path_str == 'UPBUB_U':
+        start = time.time()
+        UBU = adj_upb.dot(adj_upb_t)
+
+        # add U-U-U meta path above
+        usocial_filename = dir_ + 'user_social.txt'
+        usocial = np.loadtxt(usocial_filename, dtype=int)
+        adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
+        B_matrix = adj_uu
+        motif_matrix = B_matrix.dot(B_matrix)
+        UBU = UBU.multiply(motif_matrix)
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+    elif path_str == 'UNBUB_U':
+        unb_filename = dir_ + 'uid_neg_bid.txt'
+        unb = np.loadtxt(unb_filename, dtype=np.int64)
+        adj_unb, adj_unb_t = generate_adj_mat(unb, uid2ind, bid2ind)
+
+        start = time.time()
+        UBU = adj_unb.dot(adj_unb_t)
+        
+        # add U-U-U meta path above
+        usocial_filename = dir_ + 'user_social.txt'
+        usocial = np.loadtxt(usocial_filename, dtype=int)
+        adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
+        B_matrix = adj_uu
+        motif_matrix = B_matrix.dot(B_matrix)
+        UBU = UBU.multiply(motif_matrix)
+
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+
+    elif path_str == 'UUB_U':
+        social_filename = dir_ + 'user_social.txt'
+        uu = np.loadtxt(social_filename, dtype=np.int64)
+        adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
+
+        start = time.time()
+        # UBU = adj_uu.dot(adj_uu_t)
+        B_matrix = adj_uu
+        motif_matrix = B_matrix.dot(B_matrix).multiply(B_matrix)
+        UBU = motif_matrix
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+    elif path_str == 'UUB_PB':
+        social_filename = dir_ + 'user_social.txt'
+        uu = np.loadtxt(social_filename, dtype=np.int64)
+        adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
+
+        start = time.time()
+        # UBU = adj_uu.dot(adj_uu_t)
+        B_matrix = adj_uu
+        motif_matrix = adj_upb.dot(adj_upb_t)
+        UBU = motif_matrix.multiply(B_matrix)
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+    elif path_str == 'UUB_NB':
+        unb_filename = dir_ + 'uid_neg_bid.txt'
+        unb = np.loadtxt(unb_filename, dtype=np.int64)
+        adj_unb, adj_unb_t = generate_adj_mat(unb, uid2ind, bid2ind)
+
+        social_filename = dir_ + 'user_social.txt'
+        uu = np.loadtxt(social_filename, dtype=np.int64)
+        adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
+
+        start = time.time()
+        # UBU = adj_uu.dot(adj_uu_t)
+        B_matrix = adj_uu
+        motif_matrix = adj_unb.dot(adj_unb_t)
+        UBU = motif_matrix.multiply(B_matrix)
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+
+    # elif path_str == 'UCompUB':
+    #     uid_comp_filename = dir_ + 'uid_comp.txt'
+    #     uc = np.loadtxt(uid_comp_filename, dtype=np.int64)
+    #     cids = set(uc[:,1])
+    #     cid2ind = {v:k for k,v in enumerate(cids)}
+    #     ind2cnd = reverse_map(cid2ind)
+    #     adj_uc, adj_uc_t = generate_adj_mat(uc, uid2ind, cid2ind)
+
+    #     start = time.time()
+    #     UBU = adj_uc.dot(adj_uc_t)
+    #     print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+    elif path_str == 'URPARUB_U':
+        urpa_filename = dir_ + 'uid_rid_pos_aid.txt'
+        urpa = np.loadtxt(urpa_filename)
+        ur = list(set([(u,r) for u, r in urpa[:,(0,1)]]))# u, r multiple aspects, thus u-r can be duplicate
+        adj_ur, adj_ur_t = generate_adj_mat(ur, uid2ind, rid2ind)
+        ra = urpa[:,(1,2)]
+        adj_ra, adj_ua_t = generate_adj_mat(ra, rid2ind, aid2ind)
+
+        start = time.time()
+        URA = adj_ur.dot(adj_ra)
+        UBU = URA.dot(URA.transpose())#it should be URARU, here we use UBU for convenience
+
+        # add U-U-U meta path above
+        usocial_filename = dir_ + 'user_social.txt'
+        usocial = np.loadtxt(usocial_filename, dtype=int)
+        adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
+        B_matrix = adj_uu
+        motif_matrix = B_matrix.dot(B_matrix)
+        UBU = UBU.multiply(motif_matrix)
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+
+    elif path_str == 'URNARUB_U':
+        urpa_filename = dir_ + 'uid_rid_neg_aid.txt'
+        urpa = np.loadtxt(urpa_filename)
+        ur = list(set([(u,r) for u, r in urpa[:,(0,1)]]))# u, r multiple aspects, thus u-r can be duplicate
+        adj_ur, adj_ur_t = generate_adj_mat(ur, uid2ind, rid2ind)
+        ra = urpa[:,(1,2)]
+        adj_ra, adj_ua_t = generate_adj_mat(ra, rid2ind, aid2ind)
+
+        start = time.time()
+        URA = adj_ur.dot(adj_ra)
+        UBU = URA.dot(URA.transpose())#it should be URARU, here we use UBU for convenience
+        # add U-U-U meta path above
+        usocial_filename = dir_ + 'user_social.txt'
+        usocial = np.loadtxt(usocial_filename, dtype=int)
+        adj_uu, adj_uu_t = generate_adj_mat(usocial, uid2ind, uid2ind)
+        B_matrix = adj_uu
+        motif_matrix = B_matrix.dot(B_matrix)
+        UBU = UBU.multiply(motif_matrix)
+        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
+
+
+    start = time.time()
+    UBUB = UBU.dot(adj_upb)
+    print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
+    start = time.time()
+    K = 500
     
     #normal way
     triplets = get_topK_items(UBUB, ind2uid, ind2bid, topK=K)
@@ -470,15 +632,18 @@ def cal_yelp_all(split_num, dt):
     global dir_
     dir_ = 'data/%s/exp_split/%s/' % (dt, split_num)
 
-    for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-        cal_comm_mat_UBB(path_str)
+    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
+    #     cal_comm_mat_UBB(path_str)
 
     for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB', 'UUB']:
         cal_comm_mat_UUB(path_str)
 
-    for path_str in ['URPSRUB', 'URNSRUB']:
-        cal_rar(path_str)
-        cal_comm_mat_USUB(path_str)
+    for path_str in ['UPBUB_U', 'UNBUB_U', 'URPARUB_U', 'URNARUB_U', 'UUB_PB','UUB_NB','UUB_U']:
+        cal_comm_mat_UUB_with_motif(path_str)
+
+    # for path_str in ['URPSRUB', 'URNSRUB']:
+    #     cal_rar(path_str)
+    #     cal_comm_mat_USUB(path_str)
 
 def cal_cikm_yelp(split_num):
     global dir_
