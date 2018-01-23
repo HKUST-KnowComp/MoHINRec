@@ -6,8 +6,8 @@ import numpy as np
 from nltk.tokenize import RegexpTokenizer
 from stop_words import get_stop_words
 from nltk.stem.porter import PorterStemmer
-from gensim import corpora, models
-import gensim
+#from gensim import corpora, models
+#import gensim
 import re
 from str_util import unicode2str, str2unicode
 from utils import save_triplets
@@ -17,8 +17,8 @@ import os
 #yelp_dir = 'data/yelp/'
 #dir_ = 'data/yelp-200k/'
 #dir_ = 'data/cikm-yelp/'
-dir_ = 'data/yelp-5k/'
-#dir_ = 'data/amazon-200k/'
+#dir_ = 'data/yelp-25k/'
+dir_ = 'data/yelp-50k/'
 #dir_ = 'data/yelp/'
 #dir_ = 'data/movielens/'
 
@@ -177,9 +177,26 @@ def generate_con_ids():
     wfilename = 'ratings_conids.txt'
     save_triplets(dir_+wfilename, parts)
 
+def generate_validation_set():
+    '''
+        based on existing test set, randomly split it into validation and test set by the ratio 1:1
+    '''
+    for n in xrange(5):
+        exp_dir = dir_ + 'exp_split/%s/' % (n+1)
+        test_filename = dir_ + 'exp_split/%s/ratings_test_%s.txt' % (n+1, n+1)
+        val_filename = dir_ + 'exp_split/%s/val_%s.txt' % (n+1, n+1)
+        ratings = np.loadtxt(test_filename)
+        rand_inds = np.random.permutation(ratings.shape[0])
+        val_num = int(ratings.shape[0] * 0.5)
+        val_data = ratings[rand_inds[:val_num]]
+        test_data = ratings[rand_inds[val_num:]]
+        np.savetxt(val_filename, val_data[:,:3], '%d\t%d\t%.1f')
+        np.savetxt(test_filename.replace('ratings_', ''), test_data[:,:3], '%d\t%d\t%.1f')
+
 if __name__ == '__main__':
     #get_user_average_rate()
     #remove_cold_start_users()
     #generate_rid_aspect_triplets()
-    generate_exp_split()
+    #generate_exp_split()
     #generate_con_ids()
+    generate_validation_set()

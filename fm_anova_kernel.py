@@ -14,7 +14,6 @@ class FMAK(object):
 
     def __init__(self, config, data_loader):
         self.config = config
-        #self.logger = self.config.get('logger')
         self.train_X, self.train_Y, self.test_X, self.test_Y = data_loader.get_exp_data()
         self._init_config()
 
@@ -31,6 +30,7 @@ class FMAK(object):
         self.eps = self.config.get('eps')
         self.eta = self.config.get('eta')
         self.solver = self.config.get('solver')
+        self.bias = np.mean(self.train_Y)
         #better to add log information for the configs
         self.M = self.train_X.shape[0]
 
@@ -211,10 +211,9 @@ class FMAK(object):
         return l_obj, eta, lt, W, P
 
     def _save_paras(self, W, P):
-        pass
-        #split_num = self.data_dir.split('/')[-2]
-        #W_wfilename = 'fm_res/split%s_W_%s_exp%s.txt' % (split_num, lambw, exp_id)
-        #np.savetxt(W_wfilename, W)
-        #V_wfilename = 'fm_res/split%s_V_%s_exp%s.txt' % (split_num, lambv, exp_id)
-        #np.savetxt(V_wfilename, V)
-        #self.logger.info('W and V saved in %s and %s', W_wfilename, V_wfilename)
+        split_num = self.config['data_dir'].split('/')[-2]
+        W_wfilename = 'fm_res/split%s_W_%s_exp%s.txt' % (split_num, self.reg_W, self.exp_id)
+        np.savetxt(W_wfilename, W)
+        P_wfilename = 'fm_res/split%s_P_%s_exp%s.txt' % (split_num, self.reg_P, self.exp_id)
+        np.savetxt(P_wfilename, P)
+        logging.info('W and P saved in %s and %s', W_wfilename, P_wfilename)

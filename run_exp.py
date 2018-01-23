@@ -28,6 +28,7 @@ BIAS_ETA_TUNE = 6
 NON_CONVEX_REG = 7
 NON_CONVEX_5SPLIT = 8
 NUCLEAR_NORM_FM = 9
+GLASSO_5SPLIT = 10
 
 log_map = {FNORM_VS_GLASSO:'fnorm_vs_glasso',
            GLASSO_FO_SYN:'glasso_first_syn',
@@ -38,12 +39,15 @@ log_map = {FNORM_VS_GLASSO:'fnorm_vs_glasso',
            NON_CONVEX_REG: 'non_con',
            NON_CONVEX_5SPLIT: 'non_con',
            NUCLEAR_NORM_FM: 'nn_fm',
+           GLASSO_5SPLIT: 'glasso_5split',
         }
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-dt', help='specify the dataset for exp, e.g., yelp-50k')
     parser.add_argument('-K', help='number of latent features when factorizing P, or Q in FM', type=int)
     parser.add_argument('-reg', help='regularization for all parameters, if given, set all reg otherwise doing nothing', type=float)
+    parser.add_argument('-solver', help='specify the opt solver, e.g., nmAPG, svrg')
     parser.add_argument('-reg_P', help='regularization for P', type=float)
     parser.add_argument('-reg_Q', help='regularization for Q', type=float)
     parser.add_argument('-reg_W', help='regularization for W', type=float)
@@ -87,15 +91,14 @@ def update_configs(config, args):
 
     F = config['F']
     config['N'] = 2 * L * F
+
+    update_configs_by_args(config, args)
     config['eps'] = float(config['eps'])
     config['initial'] = float(config['initial'])
     config['eta'] = float(config['eta'])
     config['bias_eta'] = float(config['bias_eta'])
-
     dt = config['dt']
     config['data_dir'] = config.get('data_dir').replace('dt', dt)
-
-    update_configs_by_args(config, args)
 
 def set_logfile(config, args):
     if args.run_func == BIAS_ETA_TUNE:
@@ -171,6 +174,7 @@ def run_glasso(config, data_loader):
     cost1 = (time.time() - run_start) / 3600.0
     logging.info('******config*********\n%s\n******', config)
     logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
+    return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
 
 def run_non_con_reg(config, data_loader):
     print 'run fm non convex group lasso..., check the log in %s ...' % config.get('log_filename')
@@ -184,7 +188,7 @@ def run_non_con_reg(config, data_loader):
     return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
 
 def run_fnorm(config, data_loader):
-    print 'run fm fnorm...'
+    print 'run fm fnorm..., check the log in %s ...' % config.get('log_filename')
     run_start = time.time()
     fm_ak = FMAK(config, data_loader)
     fm_ak.train()
@@ -271,11 +275,30 @@ def run_non_con_5split(args):
     for rnd in range(1,6):
         config['data_dir'] = 'data/%s/exp_split/%s/' % (config['dt'], rnd)
         config['train_filename'] = 'ratings_train_%s.txt' % rnd
-        config['test_filename'] = 'ratings_test_%s.txt' % rnd
+        config['test_filename'] = 'val_%s.txt' % rnd
         data_loader = DataLoader(config)
         logging.info('start exp on split%s', rnd)
         start_time = time.time()
         rmse, mae = run_non_con_reg(config, data_loader)
+        rmses.append(rmse)
+        maes.append(mae)
+        cost = (time.time() - start_time) / 3600
+        logging.info('finish exp on split%s, cost %.1f hours', rnd, cost)
+    logging.info('finish exp on all splits, rmses=%s, maes=%s, avg rmse=%.4f, avg mae=%.4f', rmses, maes, np.mean(rmses), np.mean(maes))
+
+def run_glasso_5split(args):
+    config = init_exp_configs(args.config)
+    update_configs(config, args)
+    set_logfile(config, args)
+    rmses, maes = [], []
+    for rnd in range(1,6):
+        config['data_dir'] = 'data/%s/exp_split/%s/' % (config['dt'], rnd)
+        config['train_filename'] = 'ratings_train_%s.txt' % rnd
+        config['test_filename'] = 'val_%s.txt' % rnd
+        data_loader = DataLoader(config)
+        logging.info('start exp on split%s', rnd)
+        start_time = time.time()
+        rmse, mae = run_glasso(config, data_loader)
         rmses.append(rmse)
         maes.append(mae)
         cost = (time.time() - start_time) / 3600
@@ -296,6 +319,8 @@ def run():
     args = get_args()
     if args.run_func == NON_CONVEX_5SPLIT:
         run_non_con_5split(args)
+    elif args.run_func == GLASSO_5SPLIT:
+        run_glasso_5split(args)
     else:
         run_once(args)
 

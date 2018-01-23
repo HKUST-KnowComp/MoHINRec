@@ -6,6 +6,7 @@ import time
 import logging
 
 import numpy as np
+from sklearn.preprocessing import maxabs_scale
 
 class DataLoader(object):
     '''
@@ -23,6 +24,7 @@ class DataLoader(object):
         self.N = config.get('N')
         self.F = config.get('F')
         self.L = config.get('L')
+        self.normalize_data = bool(config.get('normalize_data'))
         if config.get('dt') == 'synthetic':
             self._load_random_data()
         else:
@@ -100,15 +102,18 @@ class DataLoader(object):
         feature_dir = self.data_dir + 'mf_features/path_count/'
         for find, filename in enumerate(ufiles):
             ufs = np.loadtxt(feature_dir + filename, dtype=np.float64)
+            if self.normalize_data:
+                ufs[:,1:] = maxabs_scale(ufs[:,1:])*20
             cur = find * self.F
             for uf in ufs:
                 uid = int(uf[0])
                 f = uf[1:]
-                #import pdb;pdb.set_trace()
                 uid2reps[uid][cur:cur+self.F] = f
 
         for find, filename in enumerate(vfiles):
             bfs = np.loadtxt(feature_dir + filename, dtype=np.float64)
+            if self.normalize_data:
+                bfs[:,1:] = maxabs_scale(bfs[:,1:])*20
             cur = find * self.F
             for bf in bfs:
                 bid = int(bf[0])

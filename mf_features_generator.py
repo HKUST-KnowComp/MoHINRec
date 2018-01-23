@@ -99,6 +99,32 @@ def run_all_yelp():
 
     for path_str in ['ratings_only']:
         run(path_str)
+        
+def run_all_epinions():
+    for path_str in ['ratings_only']:
+        run(path_str)
+        
+    for path_str in ['UUB', 'UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7','UUB_m8','UUB_m9']:
+        run(path_str)
+
+
+def run_all_yelp_res():
+    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
+    #     run(path_str)
+    for path_str in ['UPBUB_r', 'UNBUB_r', 'URPARUB_r', 'URNARUB_r', 'UUB_r']:
+        run(path_str)
+
+def run_all_yelp_merge():
+    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
+    #     run(path_str)
+    for path_str in ['UPBUB_m', 'UNBUB_m', 'URPARUB_m', 'URNARUB_m', 'UUB_m']:
+        run(path_str)
+
+def run_all_yelp_cm():
+    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
+    #     run(path_str)
+    for path_str in ['UPBUB_cm','URPARUB_cm']:
+        run(path_str)
 
 def run_all_yelp_by_rank():
     for K in [2,3,5,20,30,40,50,100]:
@@ -181,6 +207,14 @@ if __name__ == '__main__':
                 run_all_amazon_200k()
             elif 'douban' in dt:
                 run_all_douban()
+            elif 'epinions' in dt:
+                run_all_epinions()
+        elif path_str == 'res':
+            run_all_yelp_res()
+        elif path_str == 'merge':
+            run_all_yelp_merge()
+        elif path_str == 'cm':
+            run_all_yelp_cm()
         elif path_str == 'all-rank':
             if 'yelp' in dt:
                 run_all_yelp_by_rank()

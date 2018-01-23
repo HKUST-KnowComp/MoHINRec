@@ -133,6 +133,7 @@ class MF_BGD(object):
         eps_1 = eps_2 = self.eps
 
         rows, cols = omega.tocoo().row.astype(np.int32), omega.tocoo().col.astype(np.int32)
+	print 'train_num=%s, data=%s, train_data=%s, obs=%s' % (self.train_num, len(self.data), len(self.train_data), omega.nnz)
         obs = omega.copy().data.astype(np.float64).reshape(self.train_num, 1)
         self.cal_omega(omega, U, V, rows, cols, bias, obs)
 
