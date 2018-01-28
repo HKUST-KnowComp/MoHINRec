@@ -3,7 +3,7 @@ import numpy as np
 import os
 import copy
 
-dir_ = 'data/epinions/'
+dir_ = 'data/ciao/'
 # dir_ = ''
 def whether_in(x,input_list):
 	if x[0] in input_list:

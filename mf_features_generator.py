@@ -117,14 +117,11 @@ def run_all_yelp_res():
 def run_all_yelp_merge():
     # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
     #     run(path_str)
-    for path_str in ['UPBUB_m', 'UNBUB_m', 'URPARUB_m', 'URNARUB_m', 'UUB_m']:
-        run(path_str)
-
-def run_all_yelp_cm():
-    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-    #     run(path_str)
-    for path_str in ['UPBUB_cm','URPARUB_cm']:
-        run(path_str)
+    alpha_range = [x*0.1 for x in range(1,10)]
+    for path_str in ['UUB_m2']:
+        for alpha in alpha_range:
+            this_path_str  = path_str + '_' + str(alpha)
+            run(this_path_str)
 
 def run_all_yelp_by_rank():
     for K in [2,3,5,20,30,40,50,100]:
@@ -209,12 +206,8 @@ if __name__ == '__main__':
                 run_all_douban()
             elif 'epinions' in dt:
                 run_all_epinions()
-        elif path_str == 'res':
-            run_all_yelp_res()
         elif path_str == 'merge':
             run_all_yelp_merge()
-        elif path_str == 'cm':
-            run_all_yelp_cm()
         elif path_str == 'all-rank':
             if 'yelp' in dt:
                 run_all_yelp_by_rank()
