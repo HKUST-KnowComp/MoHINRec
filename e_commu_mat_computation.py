@@ -156,6 +156,9 @@ def cal_comm_mat_UUB(path_str,cikm=False):
         UBU = U_matrix
         print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
 
+    elif path_str == 'UBUB':
+        UBU = adj_ub.dot(adj_ub_t)
+
     start = time.time()
     UBUB = UBU.dot(adj_ub)
     print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
@@ -202,79 +205,42 @@ def cal_comm_mat_UUB_with_motif(path_str,cikm=False):
     B_matrix = adj_uu.multiply(adj_uu_t)
     U_matrix = adj_uu - B_matrix
 
-    if path_str == 'UUB_m1':
+    if path_str[:3] == 'UUB':
+        base_matrix = U_matrix
 
-        start = time.time()
+    if path_str[:4] == 'UBUB':
+        base_matrix = adj_ub.dot(adj_ub_t)
 
+    start = time.time()
+    if path_str[-2:]=='m1':
         motif_matrix = copy.deepcopy(U_matrix.dot(U_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start)
 
-    elif path_str == 'UUB_m2':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm2':
         motif_matrix = copy.deepcopy(U_matrix.dot(U_matrix.T))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m3':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm3':
         motif_matrix = copy.deepcopy(U_matrix.dot(B_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m4':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm4':
         motif_matrix = copy.deepcopy(U_matrix.T.dot(U_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m5':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm5':
         motif_matrix = copy.deepcopy(U_matrix.T.dot(U_matrix.T))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m6':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm6':
         motif_matrix = copy.deepcopy(U_matrix.T.dot(B_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m7':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm7':
         motif_matrix = copy.deepcopy(B_matrix.dot(U_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m8':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm8':
         motif_matrix = copy.deepcopy(B_matrix.dot(U_matrix.T))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
 
-    elif path_str == 'UUB_m9':
-
-        start = time.time()
-
+    elif path_str[-2:] == 'm9':
         motif_matrix = copy.deepcopy(B_matrix.dot(B_matrix))
-        UBU = U_matrix.multiply(motif_matrix)
-        print 'UBU(%s), density=%.5f cost %.2f seconds' % (UBU.shape, UBU.nnz * 1.0/UBU.shape[0]/UBU.shape[1], time.time() - start) 
     
     start = time.time()
+    UBU = base_matrix.multiply(motif_matrix)
     UBUB = UBU.dot(adj_ub)
     print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
     start = time.time()
@@ -510,10 +476,11 @@ def cal_yelp_all(split_num, dt):
 
     # for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB', 'UUB']:
     #     cal_comm_mat_UUB(path_str)
-    for path_str in ['UUB']:
+    for path_str in ['UBUB']:
         cal_comm_mat_UUB(path_str)
 
-    for path_str in ['UUB_m1','UUB_m2','UUB_m3','UUB_m4','UUB_m5','UUB_m6','UUB_m7','UUB_m8','UUB_m9']:
+    UBUB_motif = ['UBUB_m'+str(x) for x in range(1,10)]
+    for path_str in UBUB_motif:
         cal_comm_mat_UUB_with_motif(path_str)
 
     # for path_str in ['URPSRUB', 'URNSRUB']:
