@@ -501,40 +501,75 @@ def cal_cikm_yelp(split_num):
 
 def cal_comm_mat_UUB_m(path_str,alpha,cikm=False):
     '''
-        calculate commuting matrix for U-*-U-pos-B style
+        calculate commuting matrix for U-*-U-pos-B style in merge way
     '''
     uid_filename = dir_ + 'uids.txt'
     bid_filename = dir_ + 'bids.txt'
+    # upb_filename = dir_ + 'uid_pos_bid.txt'
     ub_filename = dir_ + 'uid_bid.txt'
+
     # if not cikm:
     #     rid_filename = dir_ + 'rids.txt'
     #     aid_filename = dir_ + 'aids.txt'
 
-    print 'cal commut mat merge for %s, filenames: %s, %s, %s' % (path_str, uid_filename, bid_filename, ub_filename)
+    print 'cal commut mat with motif for %s, filenames: %s, %s, %s' % (path_str, uid_filename, bid_filename, ub_filename)
     uids, uid2ind, ind2uid = load_eids(uid_filename, 'user')
     bids, bid2ind, ind2bid = load_eids(bid_filename, 'biz')
     # if not cikm:
     #     rids, rid2ind, ind2rid = load_eids(rid_filename, 'review')
     #     aids, aid2ind, ind2aid = load_eids(aid_filename, 'aspect')
 
+    # upb = np.loadtxt(upb_filename, dtype=np.int64)
     ub = np.loadtxt(ub_filename, dtype=np.int64)
+
+    # adj_upb, adj_upb_t = generate_adj_mat(upb, uid2ind, bid2ind)
     adj_ub, adj_ub_t = generate_adj_mat(ub, uid2ind, bid2ind)
 
-    if path_str == 'UUB_m2':
-        social_filename = dir_ + 'user_social.txt'
-        uu = np.loadtxt(social_filename, dtype=np.int64)
-        adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
+    social_filename = dir_ + 'user_social.txt'
+    uu = np.loadtxt(social_filename, dtype=np.int64)
+    adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
 
-        start = time.time()
-        B_matrix = adj_uu.multiply(adj_uu.T)
-        U_matrix = adj_uu - B_matrix
-        motif_matrix = copy.deepcopy(U_matrix.dot(U_matrix.T))
-        UBU_m = copy.deepcopy(U_matrix.multiply(motif_matrix))
-        print 'UBU_m(%s), density=%.5f cost %.2f seconds' % (UBU_m.shape, UBU_m.nnz * 1.0/UBU_m.shape[0]/UBU_m.shape[1], time.time() - start)
+    B_matrix = adj_uu.multiply(adj_uu_t)
+    U_matrix = adj_uu - B_matrix
+
+    if path_str[:3] == 'UUB':
+        base_matrix = U_matrix
+
+    if path_str[:4] == 'UBUB':
+        base_matrix = adj_ub.dot(adj_ub_t)
 
     start = time.time()
-    UBU = copy.deepcopy((1-alpha)*U_matrix+alpha*UBU_m)
-    UBUB = UBU.dot(adj_ub)
+    if path_str[-2:]=='m1':
+        motif_matrix = copy.deepcopy(U_matrix.dot(U_matrix))
+
+    elif path_str[-2:] == 'm2':
+        motif_matrix = copy.deepcopy(U_matrix.dot(U_matrix.T))
+
+    elif path_str[-2:] == 'm3':
+        motif_matrix = copy.deepcopy(U_matrix.dot(B_matrix))
+
+    elif path_str[-2:] == 'm4':
+        motif_matrix = copy.deepcopy(U_matrix.T.dot(U_matrix))
+
+    elif path_str[-2:] == 'm5':
+        motif_matrix = copy.deepcopy(U_matrix.T.dot(U_matrix.T))
+
+    elif path_str[-2:] == 'm6':
+        motif_matrix = copy.deepcopy(U_matrix.T.dot(B_matrix))
+
+    elif path_str[-2:] == 'm7':
+        motif_matrix = copy.deepcopy(B_matrix.dot(U_matrix))
+
+    elif path_str[-2:] == 'm8':
+        motif_matrix = copy.deepcopy(B_matrix.dot(U_matrix.T))
+
+    elif path_str[-2:] == 'm9':
+        motif_matrix = copy.deepcopy(B_matrix.dot(B_matrix))
+    
+    start = time.time()
+    UBU = base_matrix.multiply(motif_matrix)
+    UBU_merge = (1-alpha)*base_matrix + alpha*UBU
+    UBUB = UBU_merge.dot(adj_ub)
     print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
     start = time.time()
     K = 500
@@ -552,7 +587,7 @@ def cal_yelp_merge(split_num,dt):
     dir_ = 'data/%s/exp_split/%s/' % (dt, split_num)
 
     alpha_range = [x*0.1 for x in range(1,10)]
-    for path_str in ['UUB_m2']:
+    for path_str in ['UBUB_m5']:
         for alpha in alpha_range:
             cal_comm_mat_UUB_m(path_str,alpha)
 
