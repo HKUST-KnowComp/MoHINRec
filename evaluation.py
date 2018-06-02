@@ -11,26 +11,7 @@ import yaml
 from exp_util import cal_rmse, cal_mae
 from data_util import DataLoader
 
-split = 1
 #dir_ = 'data/amazon-200k/exp_split/%s/' % split
-test_filename = 'test_%s.txt' % split
-#reg = 0.5 convex cikm-yelp
-#W_filename = 'fm_res/cikm-yelp_split1_W_0.5_exp1514995488.txt'
-#P_filename = 'fm_res/cikm-yelp_split1_P_0.5_exp1514995488.txt'
-
-W_filename = 'fm_res/yelp-200k_split1_W_0.5_exp1514957804.txt'
-P_filename = 'fm_res/yelp-200k_split1_P_0.5_exp1514957804.txt'
-
-#W_filename = 'fm_res/amazon-200k_split1_W_0.05_exp1514989178.txt'
-#P_filename = 'fm_res/amazon-200k_split1_P_0.05_exp1514989178.txt'
-
-#reg=0.5, non-convex
-#W_filename = 'fm_res/yelp-200k_split1_W_0.5_exp1514996292.txt'
-#P_filename = 'fm_res/yelp-200k_split1_P_0.5_exp1514996292.txt'
-
-#reg=0.5, non-convex
-#W_filename = 'fm_res/amazon-200k_split1_W_0.5_exp1514996455.txt'
-#P_filename = 'fm_res/amazon-200k_split1_P_0.5_exp1514996455.txt'
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -47,9 +28,10 @@ def get_args():
     parser.add_argument('-bias_eta', help='learning rate for bias', type=float)
     parser.add_argument('-initial', help='initialization of random starting', type=float)
     parser.add_argument('-nnl', help='lambda in nuclear norm, currently it denotes the type of lambda', type=int)
+    parser.add_argument('-mg', help='meta-graphs used in the exp, path_strs, separated by comman, e.g., UUB,ratings_only,UUB_m1_0.1')
+    parser.add_argument('-wf',  help='specify the filename of W')
+    parser.add_argument('-vf',  help='specify the filename of V')
     parser.add_argument('config',  help='specify the config file')
-    parser.add_argument('wf',  help='specify the filename of W')
-    parser.add_argument('vf',  help='specify the filename of V')
     return parser.parse_args()
 
 def update_configs_by_args(config, args):
@@ -60,6 +42,9 @@ def update_configs_by_args(config, args):
         del args_dict['reg_W']
         del args_dict['reg_P']
         del args_dict['reg_Q']
+
+    if args.mg is not None:
+        config['meta_graphs'] = args.mg.split(',')
 
     for k, v in args_dict.items():
         if v is not None:
@@ -75,7 +60,7 @@ def update_configs(config, args):
     '''
     exp_id = int(time.time())
     config['exp_id'] = exp_id
-
+    update_configs_by_args(config, args)
 
     L = len(config.get('meta_graphs'))
     config['L'] = L
@@ -83,7 +68,6 @@ def update_configs(config, args):
     F = config['F']
     config['N'] = 2 * L * F
 
-    update_configs_by_args(config, args)
     config['eps'] = float(config['eps'])
     config['initial'] = float(config['initial'])
     config['eta'] = float(config['eta'])
@@ -154,6 +138,131 @@ def run(args):
     test_err = cal_err_by_data(bias, W, P, test_X, test_Y)
     print cal_rmse(test_err), cal_mae(test_err)
 
+def evaluate_epinions(args):
+    config = init_exp_configs(args.config)
+    update_configs(config, args)
+    wp_filename = 'exp_res/epinions_new_res.txt'
+    split_lines = open(wp_filename, 'r').readlines()
+    res = []
+    for split in range(3):
+        start, end = split * 385, (split + 1) * 385
+        lines = split_lines[start:end]
+
+        config['data_dir'] = 'data/epinions/exp_split/%s/' % (split+1)
+        data_dir = config['data_dir']
+        train_filename = 'ratings_train_%s.txt' % (split+1)
+        config['train_filename'] = train_filename
+        vali_filename = 'val_%s.txt' % (split+1)
+        config['test_filename'] = vali_filename
+        test_filename = 'test_%s.txt' % (split+1)
+        test_data = np.loadtxt(data_dir + test_filename)
+        bias = get_bias(data_dir + train_filename)
+        for ind, l in enumerate(lines):
+            if ind % 10 == 0:
+                print 'processing ', ind
+            parts = l.strip().split(',')
+            config['meta_graphs'] = [r.strip()[1:-1] for r in parts[2:4]]
+            data_loader = DataLoader(config)
+            uid2reps, bid2reps = data_loader._load_representation()
+            N = config['N']
+            test_X, test_Y = generate_testXY(test_data, uid2reps, bid2reps, N)
+            wf, vf = parts[-2], parts[-1]
+            W = np.loadtxt(wf)
+            P = np.loadtxt(vf)
+            test_err = cal_err_by_data(bias, W, P, test_X, test_Y)
+            parts.append(str(cal_rmse(test_err)))
+            parts.append(str(cal_mae(test_err)))
+            res.append(','.join(parts))
+    wfilename = 'exp_res/epinions_new_test_res.txt'
+    fw = open(wfilename, 'w+')
+    fw.write('\n'.join(res))
+    fw.close()
+    print 'save %s entries in %s' % (len(res), wfilename)
+
+def evaluate_ciao(args):
+    config = init_exp_configs(args.config)
+    update_configs(config, args)
+
+    data_dir = config['data_dir']
+    train_filename = config['train_filename']
+    test_data = np.loadtxt(data_dir + test_filename)
+    bias = get_bias(data_dir + train_filename)
+    wp_filename = 'exp_res/ciao_res.txt'
+    res = []
+    lines = open(wp_filename, 'r').readlines()
+    for ind, l in enumerate(lines):
+        if ind % 10 == 0:
+            print 'processing ', ind
+        parts = l.strip().split(',')
+        config['meta_graphs'] = [r.strip()[1:-1] for r in parts[1:3]]
+        data_loader = DataLoader(config)
+        uid2reps, bid2reps = data_loader._load_representation()
+        N = config['N']
+        test_X, test_Y = generate_testXY(test_data, uid2reps, bid2reps, N)
+        wf, vf = parts[-2], parts[-1]
+        W = np.loadtxt(wf)
+        P = np.loadtxt(vf)
+        test_err = cal_err_by_data(bias, W, P, test_X, test_Y)
+        parts.append(str(cal_rmse(test_err)))
+        parts.append(str(cal_mae(test_err)))
+        res.append(','.join(parts))
+    wfilename = 'exp_res/ciao_test_res.txt'
+    fw = open(wfilename, 'w+')
+    fw.write('\n'.join(res))
+    fw.close()
+    print 'save %s entries in %s' % (len(res), wfilename)
+
+def evaluate_ciaodvd(args):
+    config = init_exp_configs(args.config)
+    update_configs(config, args)
+    wp_filename = 'exp_res/ciaodvd_new_res.txt'
+    split_lines = open(wp_filename, 'r').readlines()
+    res = []
+    for split in range(3):
+        start, end = split * 385, (split + 1) * 385
+        lines = split_lines[start:end]
+
+        config['data_dir'] = 'data/ciaodvd/exp_split/%s/' % (split+1)
+        data_dir = config['data_dir']
+        train_filename = 'ratings_train_%s.txt' % (split+1)
+        config['train_filename'] = train_filename
+        vali_filename = 'val_%s.txt' % (split+1)
+        config['test_filename'] = vali_filename
+        test_filename = 'test_%s.txt' % (split+1)
+        test_data = np.loadtxt(data_dir + test_filename)
+        bias = get_bias(data_dir + train_filename)
+        for ind, l in enumerate(lines):
+            if ind % 10 == 0:
+                print 'processing ', ind
+            parts = l.strip().split(',')
+            config['meta_graphs'] = [r.strip()[1:-1] for r in parts[2:4]]
+            data_loader = DataLoader(config)
+            uid2reps, bid2reps = data_loader._load_representation()
+            N = config['N']
+            test_X, test_Y = generate_testXY(test_data, uid2reps, bid2reps, N)
+            wf, vf = parts[-2], parts[-1]
+            W = np.loadtxt(wf)
+            P = np.loadtxt(vf)
+            test_err = cal_err_by_data(bias, W, P, test_X, test_Y)
+            parts.append(str(cal_rmse(test_err)))
+            parts.append(str(cal_mae(test_err)))
+            res.append(','.join(parts))
+    wfilename = 'exp_res/ciaodvd_new_test_res.txt'
+    fw = open(wfilename, 'w+')
+    fw.write('\n'.join(res))
+    fw.close()
+    print 'save %s entries in %s' % (len(res), wfilename)
+
 if __name__ == '__main__':
     args = get_args()
-    run(args)
+    if 'epinions' in args.config:
+        print 'evaluate epinions res...'
+        evaluate_epinions(args)
+    elif 'ciaodvd' in args.config:
+        print 'evaluate ciaodvd res...'
+        evaluate_ciaodvd(args)
+    elif 'ciao' in args.config:
+        print 'evaluate ciao res...'
+        evaluate_ciao(args)
+    else:
+        run(args)
