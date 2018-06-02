@@ -18,9 +18,10 @@ import os
 #dir_ = 'data/yelp-200k/'
 #dir_ = 'data/cikm-yelp/'
 #dir_ = 'data/yelp-25k/'
-dir_ = 'data/yelp-50k/'
+#dir_ = 'data/yelp-50k/'
 #dir_ = 'data/yelp/'
 #dir_ = 'data/movielens/'
+dir_ = 'data/ciaodvd/'
 
 def lda_pre():
     '''
@@ -140,13 +141,29 @@ def generate_rid_aspect_triplets():
     fw.write('\n'.join(res))
     fw.close()
 
+def remove_duplicate():
+    rating_filename = dir_ + 'ratings.txt'
+    lines = open(rating_filename, 'r').readlines()
+    res = []
+    tmp = set()
+    for l in lines:
+        parts = l.strip().split(',')
+        key = ','.join(parts[:2])
+        if key not in tmp:
+            tmp.add(key)
+            res.append(l.strip())
+    wfilename = dir_ + 'ratings2.txt'
+    fw = open(wfilename, 'w+')
+    fw.write('\n'.join(res))
+    fw.close()
+
 def generate_exp_split():
     '''
         generate 5 groups of splitting data, given the rating data
-        80%-20% train-test ratio
+        80%-10%-10% train-val-test ratio
     '''
     rating_filename = 'ratings'
-    ratings = np.loadtxt(dir_ + rating_filename + '.txt', dtype=np.float64)
+    ratings = np.loadtxt(dir_ + rating_filename + '.txt', dtype=np.float64, delimiter=',')
     for n in xrange(5):
         exp_dir = dir_ + 'exp_split/%s/' % (n+1)
         if not os.path.isdir(exp_dir):
@@ -154,11 +171,15 @@ def generate_exp_split():
             print 'create dir %s' % exp_dir
         train_filename = dir_ + 'exp_split/%s/%s_train_%s.txt' % (n+1, rating_filename, n+1)
         test_filename = dir_ + 'exp_split/%s/%s_test_%s.txt' % (n+1, rating_filename, n+1)
+        val_filename = dir_ + 'exp_split/%s/val_%s.txt' % (n+1, n+1)
         rand_inds = np.random.permutation(ratings.shape[0])
         train_num = int(ratings.shape[0] * 0.8)
+        val_num = int(ratings.shape[0] * 0.1)
         train_data = ratings[rand_inds[:train_num]]
-        test_data = ratings[rand_inds[train_num:]]
+        val_data = ratings[rand_inds[train_num:(train_num+val_num)]]
+        test_data = ratings[rand_inds[(train_num+val_num):]]
         np.savetxt(train_filename, train_data[:,:3], '%d\t%d\t%.1f')
+        np.savetxt(val_filename, val_data[:,:3], '%d\t%d\t%.1f')
         np.savetxt(test_filename, test_data[:,:3], '%d\t%d\t%.1f')
 
 def generate_con_ids():
@@ -168,7 +189,7 @@ def generate_con_ids():
     '''
     rating_filename = 'ratings.txt'
     lines = open(dir_+rating_filename, 'r').readlines()
-    parts = [l.strip().split() for l in lines]
+    parts = [l.strip().split(',') for l in lines]
     uids = set([r[0] for r in parts])
     bids = set([r[1] for r in parts])
     uid2ind = {v:str(k+1) for k,v in enumerate(uids)}
@@ -193,10 +214,37 @@ def generate_validation_set():
         np.savetxt(val_filename, val_data[:,:3], '%d\t%d\t%.1f')
         np.savetxt(test_filename.replace('ratings_', ''), test_data[:,:3], '%d\t%d\t%.1f')
 
+def generate_uids_and_bids():
+    '''
+        generate uids.txt, bids.txt, uid_bid.txt
+    '''
+
+    rating_filename = dir_ + 'ratings.txt'
+    parts = np.loadtxt(rating_filename, dtype=int, delimiter=',')
+    trust_filename = dir_ + 'trusts.txt'
+    trusts = np.loadtxt(trust_filename, dtype=int, delimiter=',')
+    for n in xrange(5):
+        exp_dir = dir_ + 'exp_split/%s/' % (n+1)
+        train_filename = dir_ + 'exp_split/%s/ratings_train_%s.txt' % (n+1, n+1)
+        ratings = np.loadtxt(train_filename)
+        ub_filename = dir_ + 'exp_split/%s/uid_bid.txt' % (n+1)
+        np.savetxt(ub_filename, ratings[:,:2], '%d\t%d')
+        us_filename = dir_ + 'exp_split/%s/user_social.txt' % (n+1)
+        np.savetxt(us_filename, trusts[:,:2], '%d\t%d')
+        uids, bids = [], []
+        bids = set(parts[:,1])
+        uids = set(parts[:,0]).union(trusts[:,0]).union(trusts[:,1])
+        uids_filename = dir_ + 'exp_split/%s/uids.txt' % (n+1)
+        bids_filename = dir_ + 'exp_split/%s/bids.txt' % (n+1)
+        np.savetxt(uids_filename, list(uids), '%d')
+        np.savetxt(bids_filename, list(bids), '%d')
+
 if __name__ == '__main__':
     #get_user_average_rate()
     #remove_cold_start_users()
     #generate_rid_aspect_triplets()
-    #generate_exp_split()
+    generate_exp_split()
     #generate_con_ids()
-    generate_validation_set()
+    #generate_validation_set()
+    generate_uids_and_bids()
+    #remove_duplicate()

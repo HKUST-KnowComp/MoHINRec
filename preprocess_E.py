@@ -3,7 +3,7 @@ import numpy as np
 import os
 import copy
 
-dir_ = 'data/ciao/'
+dir_ = 'data/CiaoDVD/'
 # dir_ = ''
 def whether_in(x,input_list):
 	if x[0] in input_list:
@@ -18,10 +18,10 @@ def generate_exp_split():
 
 	# print rating['rating']
 	# print rating['rating'][:,[0,1,3]]
-	
+
 	rating_filename = 'ratings'
 	rating_ = rating['rating'][:,[0,1,3]]
-	
+
 	#remove duplicate entries
 	rating_dict = {}
 	for r in rating_:
@@ -84,7 +84,6 @@ def generate_uids_and_bids_txt():
 		bids_filename = dir_ + 'exp_split/%s/bids.txt' % (n+1)
 		np.savetxt(uids_filename, uids, '%d')
 		np.savetxt(bids_filename, bids, '%d')
-
 
 if __name__ == '__main__':
     generate_exp_split()
