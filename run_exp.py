@@ -6,6 +6,7 @@ import time
 import logging
 import sys
 import argparse
+import re
 
 import numpy as np
 import yaml
@@ -24,22 +25,16 @@ GLASSO_FO_SYN = 2
 GLASSO_SO_SYN = 3
 GLASSO = 4
 FNORM = 5
-BIAS_ETA_TUNE = 6
-NON_CONVEX_REG = 7
-NON_CONVEX_5SPLIT = 8
-NUCLEAR_NORM_FM = 9
-GLASSO_5SPLIT = 10
+FNORM_VARYF = 6
+FNORM_VARYK = 7
 
 log_map = {FNORM_VS_GLASSO:'fnorm_vs_glasso',
            GLASSO_FO_SYN:'glasso_first_syn',
            GLASSO_SO_SYN:'glasso_second_syn',
            GLASSO:'glasso',
            FNORM:'fnorm',
-           BIAS_ETA_TUNE: 'bias_eta_tuning',
-           NON_CONVEX_REG: 'non_con',
-           NON_CONVEX_5SPLIT: 'non_con',
-           NUCLEAR_NORM_FM: 'nn_fm',
-           GLASSO_5SPLIT: 'glasso_5split',
+           FNORM_VARYF: 'fnorm_varyF',
+           FNORM_VARYK: 'fnorm_varyK',
         }
 
 def get_args():
@@ -57,6 +52,7 @@ def get_args():
     parser.add_argument('-bias_eta', help='learning rate for bias', type=float)
     parser.add_argument('-initial', help='initialization of random starting', type=float)
     parser.add_argument('-nnl', help='lambda in nuclear norm, currently it denotes the type of lambda', type=int)
+    parser.add_argument('-mg', help='meta-graphs used in the exp, path_strs, separated by comman, e.g., UUB,ratings_only,UUB_m1_0.1')
     parser.add_argument('config',  help='specify the config file')
     parser.add_argument('run_func',  help='specify which func to run', type=int)
     return parser.parse_args()
@@ -69,6 +65,9 @@ def update_configs_by_args(config, args):
         del args_dict['reg_W']
         del args_dict['reg_P']
         del args_dict['reg_Q']
+
+    if args.mg is not None:
+        config['meta_graphs'] = args.mg.split(',')
 
     for k, v in args_dict.items():
         if v is not None:
@@ -85,6 +84,7 @@ def update_configs(config, args):
     exp_id = int(time.time())
     config['exp_id'] = exp_id
 
+    update_configs_by_args(config, args)
 
     L = len(config.get('meta_graphs'))
     config['L'] = L
@@ -92,7 +92,6 @@ def update_configs(config, args):
     F = config['F']
     config['N'] = 2 * L * F
 
-    update_configs_by_args(config, args)
     config['eps'] = float(config['eps'])
     config['initial'] = float(config['initial'])
     config['eta'] = float(config['eta'])
@@ -101,21 +100,14 @@ def update_configs(config, args):
     config['data_dir'] = config.get('data_dir').replace('dt', dt)
 
 def set_logfile(config, args):
-    if args.run_func == BIAS_ETA_TUNE:
-        if config.get('reg'):
-            log_filename = 'log/%s_%s_%s_reg%s_bias_eta%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg'), config.get('bias_eta'))
-        else:
-            log_filename = 'log/%s_%s_%s_regW%s_regP%s_bias_eta%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg_W'), config.get('reg_P'), config.get('bias_eta'))
-    elif args.run_func == NUCLEAR_NORM_FM:
-        if config.get('nnl') > 0:
-            log_filename = 'log/%s_%s_%s_nnl%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('nnl'), config.get('reg'))
+    if config.get('reg'):
+        if args.mg:
+            motif = re.search('m\d', args.mg).group(0)
+            log_filename = 'log/%s_%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], motif, config.get('reg'))
         else:
             log_filename = 'log/%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg'))
     else:
-        if config.get('reg'):
-            log_filename = 'log/%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg'))
-        else:
-            log_filename = 'log/%s_%s_%s_regW%s_regP%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg_W'), config.get('reg_P'))
+        log_filename = 'log/%s_%s_%s_regW%s_regP%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg_W'), config.get('reg_P'))
     config['log_filename'] = log_filename
     init_logger('exp_%s' % config['exp_id'], config['log_filename'], logging.INFO, False)
     logging.info('******\n%s\n******', config)
@@ -128,65 +120,6 @@ def init_exp_configs(config_filename):
     config['config_filename'] = config_filename
     return config
 
-def fnorm_vs_glasso(config, data_loader):
-    run_start = time.time()
-    fm_ak_gl = FMAKGL(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-
-    run_start = time.time()
-    fm_ak = FMAK(config, data_loader)
-    fm_ak.train()
-    rmses2, maes2 = fm_ak.get_eval_res()
-    cost2 = (time.time() - run_start) / 3600.0
-    logging.info('******fnorm_vs_glasso*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-    logging.info('**********fm_anova_kernel_fnorm finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost2 , rmses2[-5:], maes2[-5:], np.mean(rmses2[-5:]), np.mean(maes2[-5:]))
-    logging.info('******fnorm_vs_glasso*********')
-
-def run_glasso_fo_synthetic(config, data_loader):
-    print 'run glasso first order on synthetic dataset..'
-    run_start = time.time()
-    fm_ak_gl = FMAKGL_FO(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******glasso first order on synthetic dataset*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-
-def run_glasso_so_synthetic(config, data_loader):
-    print 'run glasso second order on synthetic dataset..'
-    run_start = time.time()
-    fm_ak_gl = FMAKGL_SO(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******glasso second order on synthetic dataset*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-
-def run_glasso(config, data_loader):
-    print 'run fm glasso..., check the log in %s ...' % config.get('log_filename')
-    run_start = time.time()
-    fm_ak_gl = FMAKGL(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******config*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-    return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
-
-def run_non_con_reg(config, data_loader):
-    print 'run fm non convex group lasso..., check the log in %s ...' % config.get('log_filename')
-    run_start = time.time()
-    fm_ncr = FMNCR(config, data_loader)
-    fm_ncr.train()
-    rmses1, maes1 = fm_ncr.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******config*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-    return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
-
 def run_fnorm(config, data_loader):
     print 'run fm fnorm..., check the log in %s ...' % config.get('log_filename')
     run_start = time.time()
@@ -196,48 +129,6 @@ def run_fnorm(config, data_loader):
     cost1 = (time.time() - run_start) / 3600.0
     logging.info('******config*********\n%s\n******', config)
     logging.info('**********fm_anova_kernel finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-
-def hpk_vs_ak(config, data_loader):
-
-    fm_hpk = FMHPK(config, data_loader)
-    fm_hpk.train()
-    rmses1, maes1 = fm_hpk.get_eval_res()
-    cost = (time.time() - run_start) / 3600.0
-
-    run_start = time.time()
-    fm_ak = FMAK(config, data_loader)
-    fm_ak.train()
-    rmses2, maes2 = fm_ak.get_eval_res()
-    cost = (time.time() - run_start) / 3600.0
-    logging.info('******\n%s\n******', config)
-    logging.info('**********fm_homo_poloy_kernel finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-    logging.info('**********fm_anova_kernel(standard FM) finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost , rmses2[-5:], maes2[-5:], np.mean(rmses2[-5:]), np.mean(maes2[-5:]))
-    logging.info('******fpk_vs_ak*********')
-
-def tuning_bias_eta(config, data_loader, args):
-    '''
-        tuning bias_eta,which is a fixed stepsize for updating bias in the training process
-    '''
-
-    print 'run tuning_bias_eta..., check the log in %s ...' % config.get('log_filename')
-    run_start = time.time()
-    fm_ak_gl = FMAKGL(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******config*********\n%s\nbias_eta=%s******', config, config['bias_eta'])
-    logging.info('**********fm_anova_kernel_glasso bias tuning finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-
-def run_nn_fm(config, data_loader):
-    print 'run fm group lasso for nuclear norm..., check the log in %s ...' % config.get('log_filename')
-    run_start = time.time()
-    fm_ncr = FMNNGL(config, data_loader)
-    fm_ncr.train()
-    rmses1, maes1 = fm_ncr.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******config*********\n%s\n******', config)
-    logging.info('**********fm_glasso_nn finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-    return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
 
 def run_once(args):
     '''
@@ -259,51 +150,10 @@ def run_once(args):
         run_glasso(config, data_loader)
     elif args.run_func == FNORM:
         run_fnorm(config, data_loader)
-    elif args.run_func == BIAS_ETA_TUNE:
-        tuning_bias_eta(config, data_loader, args)
-    elif args.run_func == NON_CONVEX_REG:
-        run_non_con_reg(config, data_loader)
-    elif args.run_func == NUCLEAR_NORM_FM:
-        data_loader = NNDataLoader(config)
-        run_nn_fm(config, data_loader)
-
-def run_non_con_5split(args):
-    config = init_exp_configs(args.config)
-    update_configs(config, args)
-    set_logfile(config, args)
-    rmses, maes = [], []
-    for rnd in range(1,6):
-        config['data_dir'] = 'data/%s/exp_split/%s/' % (config['dt'], rnd)
-        config['train_filename'] = 'ratings_train_%s.txt' % rnd
-        config['test_filename'] = 'val_%s.txt' % rnd
-        data_loader = DataLoader(config)
-        logging.info('start exp on split%s', rnd)
-        start_time = time.time()
-        rmse, mae = run_non_con_reg(config, data_loader)
-        rmses.append(rmse)
-        maes.append(mae)
-        cost = (time.time() - start_time) / 3600
-        logging.info('finish exp on split%s, cost %.1f hours', rnd, cost)
-    logging.info('finish exp on all splits, rmses=%s, maes=%s, avg rmse=%.4f, avg mae=%.4f', rmses, maes, np.mean(rmses), np.mean(maes))
-
-def run_glasso_5split(args):
-    config = init_exp_configs(args.config)
-    update_configs(config, args)
-    set_logfile(config, args)
-    rmses, maes = [], []
-    for rnd in range(1,6):
-        config['data_dir'] = 'data/%s/exp_split/%s/' % (config['dt'], rnd)
-        config['train_filename'] = 'ratings_train_%s.txt' % rnd
-        config['test_filename'] = 'val_%s.txt' % rnd
-        data_loader = DataLoader(config)
-        logging.info('start exp on split%s', rnd)
-        start_time = time.time()
-        rmse, mae = run_glasso(config, data_loader)
-        rmses.append(rmse)
-        maes.append(mae)
-        cost = (time.time() - start_time) / 3600
-        logging.info('finish exp on split%s, cost %.1f hours', rnd, cost)
-    logging.info('finish exp on all splits, rmses=%s, maes=%s, avg rmse=%.4f, avg mae=%.4f', rmses, maes, np.mean(rmses), np.mean(maes))
+    elif args.run_func == FNORM_VARYF:
+        run_fnorm_varyF(config, data_loader)
+    elif args.run_func == FNORM_VARYK:
+        run_fnorm_varyK(config, data_loader)
 
 def run_regsvd(config, data_loader):
     print 'run RegSVD..., check the log in %s ...' % config.get('log_filename')
@@ -315,14 +165,19 @@ def run_regsvd(config, data_loader):
     logging.info('******config*********\n%s\n******', config)
     logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
 
+def run_fnorm_varyK(config, data_loader):
+    for K in [2,3,5,20,30,40,50,100]:
+        config['K'] = K
+        run_fnorm(config, data_loader)
+
+def run_fnorm_varyF(config, data_loader):
+    for F in [2,3,5,20,30,40,50,100]:
+        config['F'] = F
+        run_fnorm(config, data_loader)
+
 def run():
     args = get_args()
-    if args.run_func == NON_CONVEX_5SPLIT:
-        run_non_con_5split(args)
-    elif args.run_func == GLASSO_5SPLIT:
-        run_glasso_5split(args)
-    else:
-        run_once(args)
+    run_once(args)
 
 if __name__ == '__main__':
     run()
