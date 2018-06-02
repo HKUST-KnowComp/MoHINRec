@@ -144,7 +144,7 @@ def cal_comm_mat_UUB(path_str,cikm=False):
     # adj_upb, adj_upb_t = generate_adj_mat(upb, uid2ind, bid2ind)
     ub = np.loadtxt(ub_filename, dtype=np.int64)
     adj_ub, adj_ub_t = generate_adj_mat(ub, uid2ind, bid2ind)
- 
+
     if path_str == 'UUB':
         social_filename = dir_ + 'user_social.txt'
         uu = np.loadtxt(social_filename, dtype=np.int64)
@@ -499,7 +499,7 @@ def cal_cikm_yelp(split_num):
         print 'process cikm yelp, split=%s, path_str=%s...' % (split_num, path_str)
         cal_comm_mat_UUB(path_str,cikm=True)
 
-def cal_comm_mat_UUB_m(path_str,alpha,cikm=False):
+def cal_comm_mat_UUB_m(path_str, alpha, cikm=False):
     '''
         calculate commuting matrix for U-*-U-pos-B style in merge way
     '''
@@ -508,16 +508,9 @@ def cal_comm_mat_UUB_m(path_str,alpha,cikm=False):
     # upb_filename = dir_ + 'uid_pos_bid.txt'
     ub_filename = dir_ + 'uid_bid.txt'
 
-    # if not cikm:
-    #     rid_filename = dir_ + 'rids.txt'
-    #     aid_filename = dir_ + 'aids.txt'
-
     print 'cal commut mat with motif for %s, filenames: %s, %s, %s' % (path_str, uid_filename, bid_filename, ub_filename)
     uids, uid2ind, ind2uid = load_eids(uid_filename, 'user')
     bids, bid2ind, ind2bid = load_eids(bid_filename, 'biz')
-    # if not cikm:
-    #     rids, rid2ind, ind2rid = load_eids(rid_filename, 'review')
-    #     aids, aid2ind, ind2aid = load_eids(aid_filename, 'aspect')
 
     # upb = np.loadtxt(upb_filename, dtype=np.int64)
     ub = np.loadtxt(ub_filename, dtype=np.int64)
@@ -565,15 +558,15 @@ def cal_comm_mat_UUB_m(path_str,alpha,cikm=False):
 
     elif path_str[-2:] == 'm9':
         motif_matrix = copy.deepcopy(B_matrix.dot(B_matrix))
-    
+
     start = time.time()
     UBU = base_matrix.multiply(motif_matrix)
-    UBU_merge = (1-alpha)*base_matrix + alpha*UBU
+    UBU_merge = (1-alpha) * base_matrix + alpha * UBU
     UBUB = UBU_merge.dot(adj_ub)
     print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
     start = time.time()
     K = 500
-    
+
     path_str = path_str+ '_'+str(alpha)
     #normal way
     triplets = get_topK_items(UBUB, ind2uid, ind2bid, topK=K)
@@ -582,14 +575,91 @@ def cal_comm_mat_UUB_m(path_str,alpha,cikm=False):
     #save_comm_res(path_str, wfilename, UBUB, ind2uid, ind2bid)
     print 'finish saving %s %s entries in %s, cost %.2f seconds' % (len(triplets), path_str, wfilename, time.time() - start)
 
-def cal_yelp_merge(split_num,dt):
+def compute_motif_matrix(adj_uu, adj_uu_t, path_str):
+    B = adj_uu.multiply(adj_uu_t)
+    U = adj_uu - B
+    motif_matrix = None
+
+    start = time.time()
+    if path_str[-2:]=='m1':
+        C = U.dot(U).multiply(U.T)
+        motif_matrix = C + C.T
+
+    elif path_str[-2:] == 'm2':
+        C = B.dot(U).multiply(U.T) + U.dot(B).multiply(U.T) + U.dot(U).multiply(B)
+        motif_matrix = C + C.T
+
+    elif path_str[-2:] == 'm3':
+        C = B.dot(B).multiply(U) + B.dot(U).multiply(B) + U.dot(B).multiply(B)
+        motif_matrix = C + C.T
+
+    elif path_str[-2:] == 'm4':
+        motif_matrix = B.dot(B).multiply(B)
+
+    elif path_str[-2:] == 'm5':
+        C = U.dot(U).multiply(U) + U.dot(U.T).multiply(U) + U.T.dot(U).multiply(U)
+        motif_matrix = C + C.T
+
+    elif path_str[-2:] == 'm6':
+        motif_matrix = U.dot(B).multiply(U) + B.dot(U.T).multiply(U.T) + U.T.dot(U).multiply(B)
+
+    elif path_str[-2:] == 'm7':
+        motif_matrix = U.T.dot(B).multiply(U.T) + B.dot(U).multiply(U) + U.dot(U.T).multiply(B)
+    return motif_matrix
+
+def cal_comm_mat_sm(path_str):
+    '''
+        calculate commuting matrix for U-*-U-pos-B style in merge way with 7 simple motifs (sm)
+    '''
+    uid_filename = dir_ + 'uids.txt'
+    bid_filename = dir_ + 'bids.txt'
+    ub_filename = dir_ + 'uid_bid.txt'
+
+    print 'cal commut mat with motif for %s, filenames: %s, %s, %s' % (path_str, uid_filename, bid_filename, ub_filename)
+    uids, uid2ind, ind2uid = load_eids(uid_filename, 'user')
+    bids, bid2ind, ind2bid = load_eids(bid_filename, 'biz')
+
+    # upb = np.loadtxt(upb_filename, dtype=np.int64)
+    ub = np.loadtxt(ub_filename, dtype=np.int64)
+
+    # adj_upb, adj_upb_t = generate_adj_mat(upb, uid2ind, bid2ind)
+    adj_ub, adj_ub_t = generate_adj_mat(ub, uid2ind, bid2ind)
+
+    social_filename = dir_ + 'user_social.txt'
+    uu = np.loadtxt(social_filename, dtype=np.int64)
+    adj_uu, adj_uu_t = generate_adj_mat(uu, uid2ind, uid2ind)
+
+    motif_matrix = compute_motif_matrix(adj_uu, adj_uu_t, path_str)
+
+    if path_str[:3] == 'UUB':
+        base_matrix = adj_uu
+
+    if path_str[:4] == 'UBUB':
+        base_matrix = adj_ub.dot(adj_ub_t)
+
+    #for n in range(1, 10):
+    for n in range(11):
+        alpha = n * 0.1
+        UBU_merge = (1 - alpha) * base_matrix + alpha * motif_matrix
+        start = time.time()
+        UBUB = UBU_merge.dot(adj_ub)
+        print 'UBUB(%s), density=%.5f cost %.2f seconds' % (UBUB.shape, UBUB.nnz * 1.0/UBUB.shape[0]/UBUB.shape[1], time.time() - start)
+        start = time.time()
+        K = 500
+
+        #normal way
+        triplets = get_topK_items(UBUB, ind2uid, ind2bid, topK=K)
+        wfilename = dir_ + 'sim_res/path_count/%s_%s_top%s.res' % (path_str, alpha, K)
+        save_triplets(wfilename, triplets)
+        print 'finish saving %s %s entries in %s, cost %.2f seconds' % (len(triplets), path_str, wfilename, time.time() - start)
+
+def cal_yelp_merge(split_num, dt):
     global dir_
     dir_ = 'data/%s/exp_split/%s/' % (dt, split_num)
 
-    alpha_range = [x*0.1 for x in range(1,10)]
-    for path_str in ['UBUB_m5']:
-        for alpha in alpha_range:
-            cal_comm_mat_UUB_m(path_str,alpha)
+    motif_paths = ['UUB_m%s' % r for r in range(1,8)]
+    for path_str in motif_paths:
+        cal_comm_mat_sm(path_str)
 
 if __name__ == '__main__':
     if len(sys.argv) == 4:
