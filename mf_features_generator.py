@@ -6,6 +6,7 @@
 import sys
 import time
 import logging
+import os
 import numpy as np
 #from numba import jit
 
@@ -49,11 +50,15 @@ def run(path_str, comb='', K=10):
     U,V = mf.run()
     start_time = time.time()
     wfilename = dir_ + 'mf_features/path_count/%s_user.dat' % (path_str)
+    rank_dir = dir_ + 'mf_features/path_count/ranks/%s/' % K
+    if K != 10 and not os.path.isdir(rank_dir):
+        os.makedirs(rank_dir)
+
     if use_topK:
-        #wfilename = dir_ + 'mf_features/path_count/ranks/%s_top%s_F%s_user.dat' % (path_str, topK, K)
-        wfilename = dir_ + 'mf_features/path_count/%s_top%s_user.dat' % (path_str, topK)
-    if comb:
-        wfilename = dir_ + 'mf_features/path_count/combs/%s_%s_top%s_user.res' % (path_str, comb, topK)
+        #wfilename = dir_ + 'mf_features/path_count/%s_top%s_user.dat' % (path_str, topK)
+        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_top%s_user.dat' % (K, path_str, topK)
+    else:
+        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_user.dat' % (K, path_str)
 
     fw = open(wfilename, 'w+')
     res = []
@@ -70,10 +75,10 @@ def run(path_str, comb='', K=10):
     start_time = time.time()
     wfilename = dir_ + 'mf_features/path_count/%s_item.dat' % (path_str)
     if use_topK:
-        wfilename = dir_ + 'mf_features/path_count/%s_top%s_item.dat' % (path_str, topK)
-        #wfilename = dir_ + 'mf_features/path_count/ranks/%s_top%s_F%s_item.dat' % (path_str, topK, K)
-    if comb:
-        wfilename = dir_ + 'mf_features/path_count/combs/%s_%s_top%s_item.res' % (path_str, comb, topK)
+        #wfilename = dir_ + 'mf_features/path_count/%s_top%s_item.dat' % (path_str, topK)
+        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_top%s_item.dat' % (K, path_str, topK)
+    else:
+        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_item.dat' % (K, path_str)
 
     fw = open(wfilename, 'w+')
     res = []
@@ -99,13 +104,45 @@ def run_all_yelp():
 
     for path_str in ['ratings_only']:
         run(path_str)
-        
+
 def run_all_epinions():
+    #    run(path_str)
     for path_str in ['ratings_only']:
         run(path_str)
-        
-    for path_str in ['UUB', 'UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7','UUB_m8','UUB_m9']:
-        run(path_str)
+    for path_str in ['UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7']:
+        for n in range(11):
+            alpha = n * 0.1
+            path_str1 = '%s_%s' % (path_str, alpha)
+            print 'run for ', path_str1
+            run(path_str1)
+
+def run_all_epinions_by_rank():
+    #m2, alpha=0.4
+    for K in [2,3,5,20,30,40,50,100]:
+        print 'process rank ', K
+
+        for path_str in ['ratings_only']:
+            run(path_str, K=K)
+        #for path_str in ['UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7']:
+        for path_str in ['UUB_m2']:
+            alpha = 0.4
+            path_str1 = '%s_%s' % (path_str, alpha)
+            print 'run for ', path_str1
+            run(path_str1, K=K)
+
+def run_all_ciaodvd_by_rank():
+    #m2, alpha=0.4
+    for K in [2,3,5,20,30,40,50,100]:
+        print 'process rank ', K
+
+        for path_str in ['ratings_only']:
+            run(path_str, K=K)
+        #for path_str in ['UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7']:
+        for path_str in ['UUB_m6']:
+            alpha = 0.4
+            path_str1 = '%s_%s' % (path_str, alpha)
+            print 'run for ', path_str1
+            run(path_str1, K=K)
 
 
 def run_all_yelp_res():
@@ -206,6 +243,10 @@ if __name__ == '__main__':
                 run_all_douban()
             elif 'epinions' in dt:
                 run_all_epinions()
+            elif 'ciao' in dt:
+                run_all_epinions()
+            elif 'ciaodvd' in dt:
+                run_all_epinions()
         elif path_str == 'merge':
             run_all_yelp_merge()
         elif path_str == 'all-rank':
@@ -213,6 +254,10 @@ if __name__ == '__main__':
                 run_all_yelp_by_rank()
             elif 'amazon' in dt:
                 run_all_amazon_by_rank()
+            elif 'epinions' in dt:
+                run_all_epinions_by_rank()
+            elif 'ciaodvd' in dt:
+                run_all_ciaodvd_by_rank()
         elif path_str == 'cikm':
             dir_ = 'data/cikm/yelp/exp_split/%s/' % (split_num)
             print 'data: %s, path_str: %s' % (dir_, path_str)

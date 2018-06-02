@@ -54,7 +54,7 @@ class MF_BGD(object):
         self.load_lib()
 
     def load_lib(self):
-        part_dot_lib = ctypes.cdll.LoadLibrary('./partXY_blas.so')
+        part_dot_lib = ctypes.cdll.LoadLibrary('./partXY.so')
         set_val_lib = ctypes.cdll.LoadLibrary('./setVal.so')
         self.part_dot = part_dot_lib.partXY
         self.set_val = set_val_lib.setVal
