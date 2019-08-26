@@ -1,21 +1,13 @@
-# FMG
-The code KDD17 paper "[Meta-Graph Based Recommendation Fusion over Heterogeneous Information Networks](http://www.cse.ust.hk/~hzhaoaf/data/kdd17-paper.pdf)" and Arvix preprint "Learning with Heterogeneous Side Information Fusion for Recommender Systems (https://arxiv.org/pdf/1801.02411.pdf)"
+# MoHINRec
+The code CIKM 19 paper "[Motif Enhanced Recommendation over Heterogeneous Information Network]
 
 Readers are welcomed to fork this repository to reproduce the experiments and follow our work. Please kindly cite our paper
 
     @inproceedings{zhao2017meta,
-    title={Meta-Graph Based Recommendation Fusion over Heterogeneous Information Networks},
-    author={Zhao, Huan and Yao, Quanming and Li, Jianda and Song, Yangqiu and Lee, Dik Lun},
-    booktitle={KDD},
-    pages={635--644},
-    year={2017}
-    }
-    
-    @TechnicalReport{zhao2018learning,
-    title={Learning with Heterogeneous Side Information Fusion for Recommender Systems},
-    author={Zhao, Huan and Yao, Quanming and Song, Yangqiu and Kwok, James and Lee, Dik Lun},
-    institution = {arXiv preprint arXiv:1801.02411},
-    year={2018}
+    title={Motif Enhanced Recommendation over Heterogeneous Information Network},
+    author={Zhao, Huan and Zhou, Yingqi and Song, Yangqiu and Lee, Dik Lun},
+    booktitle={CIKM},
+    year={2019}
     }
     
 We use Epinions Dataset and Ciao Dataset from https://www.cse.msu.edu/~tangjili/trust.html. Any problems, you can create an issue. Note that these two datasets are provied by Prof. [Jiliang Tang](https://www.cse.msu.edu/~tangjili/trust.html), thus if you use these datasets for your paper, please cite the authors' paper as instructed in the website https://www.cse.msu.edu/~tangjili/trust.html 
