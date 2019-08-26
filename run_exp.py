@@ -11,31 +11,10 @@ import re
 import numpy as np
 import yaml
 
-from fm_homo_poly_kernel import FMHPK
-from fm_anova_kernel import FMAK
 from fm_anova_kernel_glasso import FMAKGL
-from fm_non_con_reg import FMNCR
-from fm_nn_glasso import FMNNGL
 
-from data_util import DataLoader, NNDataLoader
+from data_util import DataLoader
 from logging_util import init_logger
-
-FNORM_VS_GLASSO = 1
-GLASSO_FO_SYN = 2
-GLASSO_SO_SYN = 3
-GLASSO = 4
-FNORM = 5
-FNORM_VARYF = 6
-FNORM_VARYK = 7
-
-log_map = {FNORM_VS_GLASSO:'fnorm_vs_glasso',
-           GLASSO_FO_SYN:'glasso_first_syn',
-           GLASSO_SO_SYN:'glasso_second_syn',
-           GLASSO:'glasso',
-           FNORM:'fnorm',
-           FNORM_VARYF: 'fnorm_varyF',
-           FNORM_VARYK: 'fnorm_varyK',
-        }
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -54,7 +33,7 @@ def get_args():
     parser.add_argument('-nnl', help='lambda in nuclear norm, currently it denotes the type of lambda', type=int)
     parser.add_argument('-mg', help='meta-graphs used in the exp, path_strs, separated by comman, e.g., UUB,ratings_only,UUB_m1_0.1')
     parser.add_argument('config',  help='specify the config file')
-    parser.add_argument('run_func',  help='specify which func to run', type=int)
+    parser.add_argument('-run_func',  help='specify which func to run', type=int)
     return parser.parse_args()
 
 def update_configs_by_args(config, args):
@@ -103,11 +82,11 @@ def set_logfile(config, args):
     if config.get('reg'):
         if args.mg:
             motif = re.search('m\d', args.mg).group(0)
-            log_filename = 'log/%s_%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], motif, config.get('reg'))
+            log_filename = 'log/%s_%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), "glasso", motif, config.get('reg'))
         else:
-            log_filename = 'log/%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg'))
+            log_filename = 'log/%s_%s_%s_reg%s.log' % (config['dt'], config.get('log_filename'), "glasso", config.get('reg'))
     else:
-        log_filename = 'log/%s_%s_%s_regW%s_regP%s.log' % (config['dt'], config.get('log_filename'), log_map[args.run_func], config.get('reg_W'), config.get('reg_P'))
+        log_filename = 'log/%s_%s_%s_regW%s_regP%s.log' % (config['dt'], config.get('log_filename'), "glasso", config.get('reg_W'), config.get('reg_P'))
     config['log_filename'] = log_filename
     init_logger('exp_%s' % config['exp_id'], config['log_filename'], logging.INFO, False)
     logging.info('******\n%s\n******', config)
@@ -120,15 +99,16 @@ def init_exp_configs(config_filename):
     config['config_filename'] = config_filename
     return config
 
-def run_fnorm(config, data_loader):
-    print 'run fm fnorm..., check the log in %s ...' % config.get('log_filename')
+def run_glasso(config, data_loader):
+    print 'run fm glasso..., check the log in %s ...' % config.get('log_filename')
     run_start = time.time()
-    fm_ak = FMAK(config, data_loader)
-    fm_ak.train()
-    rmses1, maes1 = fm_ak.get_eval_res()
+    fm_ak_gl = FMAKGL(config, data_loader)
+    fm_ak_gl.train()
+    rmses1, maes1 = fm_ak_gl.get_eval_res()
     cost1 = (time.time() - run_start) / 3600.0
     logging.info('******config*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
+    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
+    return np.mean(rmses1[-5:]), np.mean(maes1[-5:])
 
 def run_once(args):
     '''
@@ -140,40 +120,8 @@ def run_once(args):
     set_logfile(config, args)
     data_loader = DataLoader(config)
 
-    if args.run_func == FNORM_VS_GLASSO:
-        fnorm_vs_glasso(config, data_loader)
-    elif args.run_func == GLASSO_FO_SYN:
-        run_glasso_fo_synthetic(config, data_loader)
-    elif args.run_func == GLASSO_SO_SYN:
-        run_glasso_so_synthetic(config, data_loader)
-    elif args.run_func == GLASSO:
-        run_glasso(config, data_loader)
-    elif args.run_func == FNORM:
-        run_fnorm(config, data_loader)
-    elif args.run_func == FNORM_VARYF:
-        run_fnorm_varyF(config, data_loader)
-    elif args.run_func == FNORM_VARYK:
-        run_fnorm_varyK(config, data_loader)
+    run_glasso(config, data_loader)
 
-def run_regsvd(config, data_loader):
-    print 'run RegSVD..., check the log in %s ...' % config.get('log_filename')
-    run_start = time.time()
-    fm_ak_gl = MF(config, data_loader)
-    fm_ak_gl.train()
-    rmses1, maes1 = fm_ak_gl.get_eval_res()
-    cost1 = (time.time() - run_start) / 3600.0
-    logging.info('******config*********\n%s\n******', config)
-    logging.info('**********fm_anova_kernel_glasso finish, run once, cost %.2f hours*******\n, rmses: %s, maes: %s\navg rmse=%s, avg mae=%s\n***************', cost1 , rmses1[-5:], maes1[-5:], np.mean(rmses1[-5:]), np.mean(maes1[-5:]))
-
-def run_fnorm_varyK(config, data_loader):
-    for K in [2,3,5,20,30,40,50,100]:
-        config['K'] = K
-        run_fnorm(config, data_loader)
-
-def run_fnorm_varyF(config, data_loader):
-    for F in [2,3,5,20,30,40,50,100]:
-        config['F'] = F
-        run_fnorm(config, data_loader)
 
 def run():
     args = get_args()

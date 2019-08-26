@@ -1,97 +1,70 @@
-# kdd17_src
-source code for preparing kdd17, updated 20170105
-## Preprocessor
-#### preprocessing.py
-- Functions for simple processing of data, like preparing data for run LDA.
-- Remove cold-start users, like those whose number of ratings is less than 5;
-- Other funcs like get user average ratings, generate review-aspect-weights triplets.
+# FMG
+The code KDD17 paper "[Meta-Graph Based Recommendation Fusion over Heterogeneous Information Networks](http://www.cse.ust.hk/~hzhaoaf/data/kdd17-paper.pdf)" and Arvix preprint "Learning with Heterogeneous Side Information Fusion for Recommender Systems (https://arxiv.org/pdf/1801.02411.pdf)"
 
-#### yelp_extractor.py
-- Extract data from raw data provide by the yelp dataset challenge.
+Readers are welcomed to fork this repository to reproduce the experiments and follow our work. Please kindly cite our paper
 
-#### lda.py
-- LDA implementation based on gensim.
+    @inproceedings{zhao2017meta,
+    title={Meta-Graph Based Recommendation Fusion over Heterogeneous Information Networks},
+    author={Zhao, Huan and Yao, Quanming and Li, Jianda and Song, Yangqiu and Lee, Dik Lun},
+    booktitle={KDD},
+    pages={635--644},
+    year={2017}
+    }
+    
+    @TechnicalReport{zhao2018learning,
+    title={Learning with Heterogeneous Side Information Fusion for Recommender Systems},
+    author={Zhao, Huan and Yao, Quanming and Song, Yangqiu and Kwok, James and Lee, Dik Lun},
+    institution = {arXiv preprint arXiv:1801.02411},
+    year={2018}
+    }
+    
+We use Epinions Dataset and Ciao Dataset from https://www.cse.msu.edu/~tangjili/trust.html. Any problems, you can create an issue. Note that these two datasets are provied by Prof. [Jiliang Tang](https://www.cse.msu.edu/~tangjili/trust.html), thus if you use these datasets for your paper, please cite the authors' paper as instructed in the website https://www.cse.msu.edu/~tangjili/trust.html 
 
-#### aspects\_extractor.py
-- Extract aspects from reviews, which are prepared for building hin.
+## Instructions
 
-#### filter\_processor.py
-- provide functions that generate all kinds of filtering results, like positive or negative bids, or aids.
+For the sake of ease, a quick instruction is given for readers to reproduce the whole process on Epinions dataset. Note that the programs are testd on **Linux(CentOS release 6.9), Python 2.7 and Numpy 1.14.0 from Anaconda 4.3.6.**
 
-#### samples\_processor.py
--scripts used to generate data for sample users
--currently used to generate cat, state, city, stars of bids
+### Prerequisites
 
+1. Create a directory "data" in this project directory, download epinions dataset and put it under "data/" .
+2. Create directory **"log"** in the project by "mkdir log".
+3. Create directory **"fm\_res"** in the project by "mkdir fm\_res".
+4. Open preprocess_E.py in this project directory, set the value of "dir_" equals "data/epinions/", and then run 
+```python
+python preprocess_E.py
+```
+5. Iteratively create directories **"sim_res/path_count"** and **"mf_features/path_count"** in directory **"data/epinions/exp_split/1/"**.
+### Meta-graph Similarity Matrices Computation.
+To generate the MoHINRec M1-M7 similarity matrices with alpha from 0 to 1 on Epinions dataset, run
 
-## HIN modules
-#### hin\_db\_generator.py
-- Provide functions and SQLs to create or update related tables in database, etc create tables, add indexes.
-- Preseve all the entities and relations in sqlite3.
+	python e_commu_mat_computation.py epinions 1
+The arguments are explained in the following:
+	
+	epinions: specify the dataset.
+	1: run for the split dataset 1, i.e., exp_split/1
+This command generates MoHINRec M1-M7 similarity matrices with alpha from 0 to 1. One dependent lib is bottleneck, you may install it with "**pip install bottleneck**".
 
-#### hin_operator.py
-- Preserve a whole HIN in memory.
-- APIs provided for conviniently obtaining entities or relations from database of hin.
+### Meta-graph Latent Features Generation.
+To generate the latent features by MF based on the simiarity matrices, run
+    
+    python mf_features_generator.py epinions 1
 
-#### data\_split.py
-- split uids into blocks for parallel computing
+This command generates the latent features for MoHINRec M1-M7 similarity matrices. The arguments are the same as the above ones.
 
-## HIN modules
-#### meta\_stru\_sim\_computation.py
-- The core module that computes meta-structure-based similarity according to Algorithm 1 in KDD16 paper. 
-- decreprecated because of the efficiency problem.
+Note that, to improve the computation efficiency, some modules are implements with C and called in python(see *load_lib* method in mf.py). Thus to successfully run mf\_features\_generator.py, you need to compile two C source files. The following scripts are tested on CentOS, and readers may take as references.
 
-## Similarity and Feature Generation
+	gcc -fPIC --shared setVal.c -o setVal.so
+	gcc -fPIC --shared partXY.c -o partXY.so
 
-#### mf.py
-- The standard matrix factorization model.
+After the compiling, you will get two files in the project directory "setVal.so" and "partXY.so".
 
-#### mf\_features\_generator.py
-- The script that call the mf.py to generate latent features of users and items form the meta-graph based similarities.
+### FMG
+After obtain the latent features, then the readers can run FMG model as following:
+    
+    python run_exp.py config/epinions.yaml -reg 0.5
 
-#### uub\_commu\_mat\_computation.py
-- Provide functions that calculate U-*-U-B style meta-graph commuting matrix. i.e. only calculate the number of instances of meta-graph.
+One may read the comment in files in directory config for more information.
 
-#### ubb\_commu\_mat\_computation.py
-- Provide functions that calculate U-B-*-B style meta-graph commuting matrix. i.e. only calculate the number of instances of meta-graph.
-
-#### ui\_sim\_computation\_ubb.py
-- Calculate the PathSim based user-item similarity for U-B-*-B style meta-graph. Refer to the paper for the formula.
-- B-*-B style commuting matrix res is calculated in-place.
-
-#### bb\_sim\_computation.py
-- Calculate the B-*-B style meta-path based commuting matrix res.
-- Discarded because of the too many entries in saving.
-
-#### cal\_commuting\_mat.py
-- Provide functions that calculate different communting matrix for given meta-graph.
- 
-#### commu\_mat\_sim\_computation.py
-- calculate similarity based on commuting matrix operation.
-- Mainly used for Yelp sample data.
-
-## Prediction Model
-#### fm\_one\_path.py
-- FM model to compute only one-path based similarities.
-
-#### fm\_with\_fnorm.py
-- FM model with frobenius norm
-
-#### fm\_with\_glasso.py
-- FM model with group lasso.
-- two optimizing methods are provided: proximal gradient and accelerated proximal gradient.
-
-## Utils
-utils used.
-
-#### utils.py
-- reverse map
-- generate sparse matrix given data, rows, cols
-
-#### db_util.py
-- APIs for excuting sqls in sqlite3.
-
-#### str_util.py
-- Providing functions to processing strings, e.g. unicode2str, str2unicode.
-
-#### logging_util.py
-- util to write log.
+## Misc
+If you have any questions about this project, **you can open issues**, thus it can help more people who are interested in this project.
+I will reply to your issues as soon as possible.

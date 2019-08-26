@@ -3,7 +3,7 @@ import numpy as np
 import os
 import copy
 
-dir_ = 'data/CiaoDVD/'
+dir_ = 'data/epinions/'
 # dir_ = ''
 def whether_in(x,input_list):
 	if x[0] in input_list:
@@ -42,9 +42,9 @@ def generate_exp_split():
 		if not os.path.isdir(exp_dir):
 			os.makedirs(exp_dir)
 			print 'create dir %s' % exp_dir
-		train_filename = dir_ + 'exp_split/%s/%s_train_%s.txt' % (n+1, rating_filename, n+1)
-		test_filename = dir_ + 'exp_split/%s/test_%s.txt' % (n+1,n+1)
-		val_filename = dir_ + 'exp_split/%s/val_%s.txt' % (n+1,n+1)
+		train_filename = dir_ + 'exp_split/%s/%s.txt' % (n+1, rating_filename)
+		test_filename = dir_ + 'exp_split/%s/test.txt' % (n+1)
+		val_filename = dir_ + 'exp_split/%s/val.txt' % (n+1)
 
 		rand_inds = np.random.permutation(ratings.shape[0])
 		train_num = int(ratings.shape[0] * 0.8)

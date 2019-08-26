@@ -56,9 +56,9 @@ def run(path_str, comb='', K=10):
 
     if use_topK:
         #wfilename = dir_ + 'mf_features/path_count/%s_top%s_user.dat' % (path_str, topK)
-        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_top%s_user.dat' % (K, path_str, topK)
+        wfilename = dir_ + 'mf_features/path_count/%s_top%s_user.dat' % (path_str, topK)
     else:
-        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_user.dat' % (K, path_str)
+        wfilename = dir_ + 'mf_features/path_count/%s_user.dat' % (path_str)
 
     fw = open(wfilename, 'w+')
     res = []
@@ -76,9 +76,9 @@ def run(path_str, comb='', K=10):
     wfilename = dir_ + 'mf_features/path_count/%s_item.dat' % (path_str)
     if use_topK:
         #wfilename = dir_ + 'mf_features/path_count/%s_top%s_item.dat' % (path_str, topK)
-        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_top%s_item.dat' % (K, path_str, topK)
+        wfilename = dir_ + 'mf_features/path_count/%s_top%s_item.dat' % (path_str, topK)
     else:
-        wfilename = dir_ + 'mf_features/path_count/ranks/%s/%s_item.dat' % (K, path_str)
+        wfilename = dir_ + 'mf_features/path_count/%s_item.dat' % (path_str)
 
     fw = open(wfilename, 'w+')
     res = []
@@ -92,19 +92,6 @@ def run(path_str, comb='', K=10):
     fw.close()
     print 'Item-Features: %s  saved in %s, cost %.2f seconds' % (V.shape, wfilename, time.time() - start_time)
 
-def run_all_yelp():
-    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-    #     run(path_str)
-    for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB', 'UUB']:
-        run(path_str)
-   # for path_str in ['URPSRUB', 'URNSRUB']:
-    #    run(path_str)
-    for path_str in ['UPBUB_U', 'UNBUB_U', 'URPARUB_U', 'URNARUB_U', 'UUB_PB','UUB_NB','UUB_U']:
-        run(path_str)
-
-    for path_str in ['ratings_only']:
-        run(path_str)
-
 def run_all_epinions():
     #    run(path_str)
     for path_str in ['ratings_only']:
@@ -116,159 +103,16 @@ def run_all_epinions():
             print 'run for ', path_str1
             run(path_str1)
 
-def run_all_epinions_by_rank():
-    #m2, alpha=0.4
-    for K in [2,3,5,20,30,40,50,100]:
-        print 'process rank ', K
-
-        for path_str in ['ratings_only']:
-            run(path_str, K=K)
-        #for path_str in ['UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7']:
-        for path_str in ['UUB_m2']:
-            alpha = 0.4
-            path_str1 = '%s_%s' % (path_str, alpha)
-            print 'run for ', path_str1
-            run(path_str1, K=K)
-
-def run_all_ciaodvd_by_rank():
-    #m2, alpha=0.4
-    for K in [2,3,5,20,30,40,50,100]:
-        print 'process rank ', K
-
-        for path_str in ['ratings_only']:
-            run(path_str, K=K)
-        #for path_str in ['UUB_m1', 'UUB_m2', 'UUB_m3', 'UUB_m4','UUB_m5','UUB_m6','UUB_m7']:
-        for path_str in ['UUB_m6']:
-            alpha = 0.4
-            path_str1 = '%s_%s' % (path_str, alpha)
-            print 'run for ', path_str1
-            run(path_str1, K=K)
-
-
-def run_all_yelp_res():
-    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-    #     run(path_str)
-    for path_str in ['UPBUB_r', 'UNBUB_r', 'URPARUB_r', 'URNARUB_r', 'UUB_r']:
-        run(path_str)
-
-def run_all_yelp_merge():
-    # for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-    #     run(path_str)
-    alpha_range = [x*0.1 for x in range(1,10)]
-    for path_str in ['UUB_m2']:
-        for alpha in alpha_range:
-            this_path_str  = path_str + '_' + str(alpha)
-            run(this_path_str)
-
-def run_all_yelp_by_rank():
-    for K in [2,3,5,20,30,40,50,100]:
-        start = time.time()
-        print 'process rank ', K
-        for path_str in ['UPBCatB','UPBCityB', 'UPBStateB', 'UPBStarsB']:
-            run(path_str, K=K)
-        for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB', 'UUB']:
-            run(path_str, K=K)
-        for path_str in ['URPSRUB', 'URNSRUB']:
-            run(path_str, K=K)
-        for path_str in ['ratings_only']:
-            run(path_str, K=K)
-        print 'finish processing rank %s, cost %.2fm ' % (K, (time.time() - start) / 60.0)
-
-def run_all_amazon_by_rank():
-    for K in [2,3,5,20,30,40,50,100]:
-        start = time.time()
-        print 'process rank ', K
-        for path_str in ['UPBCatB','UPBBrandB']:
-            run(path_str, K=K)
-        for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB']:
-            run(path_str, K=K)
-        for path_str in ['URPSRUB', 'URNSRUB']:
-            run(path_str, K=K)
-        #for path_str in ['ratings_only']:
-        #    run(path_str, K=K)
-        print 'finish processing rank %s, cost %.2fm ' % (K, (time.time() - start) / 60.0)
-
-def run_cikm_yelp():
-    #for path_str in ['UPBUB', 'UNBUB', 'UPBCatBUB', 'UNBCatBUB','UPBCityBUB', 'UNBCityBUB', 'UUB', 'UCompUB']:
-    for path_str in ['ratings_only']:
-        run(path_str)
-
-def run_all_douban():
-    for path_str in ['UBUB', 'UGUB', 'UBDBUB', 'UBABUB', 'UBTBUB', 'ratings_only']:
-    #for path_str in ['ratings_only']:
-        run(path_str)
-
-def run_all_amazon_200k(ratings_only=False):
-    if ratings_only:
-        run('ratings_only')
-    else:
-        for path_str in ['UPBCatB','UPBBrandB']:
-            run(path_str)
-        for path_str in ['UPBUB', 'UNBUB', 'URPARUB', 'URNARUB']:
-            run(path_str)
-        for path_str in ['URPSRUB', 'URNSRUB']:
-            run(path_str)
-
-def run_amazon_200k_combs():
-    run_start = time.time()
-    path_strs = ['UBUB', 'URARUB']
-    #path_strs = ['URARUB']
-    combs = ['PPP', 'NNP', 'PPN', 'NNN', 'PNP', 'NPP', 'PNN', 'NPN']
-    cnt = 1
-    for path_str in path_strs:
-        for comb in combs:
-            print 'start processing %s_%s, cnt=%s' % (path_str, comb, cnt)
-            cnt += 1
-            run(path_str, comb)
-            print 'finish processing %s_%s, cnt=%s' % (path_str, comb, cnt)
-
 if __name__ == '__main__':
     global dir_
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 3:
         dt = sys.argv[1]
-        path_str = sys.argv[2]
-        split_num = sys.argv[3]
+        split_num = sys.argv[2]
         dir_ = 'data/%s/exp_split/%s/' % (dt, split_num)
-        log_filename = 'log/%s_mf_feature_geneartion_%s_split%s.log' % (dt, path_str, split_num)
+        log_filename = 'log/%s_mf_feature_geneartion_split%s.log' % (dt, split_num)
         exp_id = int(time.time())
         logger = init_logger('exp_%s' % exp_id, log_filename, logging.INFO, False)
-        print 'data: %s, path_str: %s' % (dir_, path_str)
-        logger.info('data: %s, path_str: %s', dir_, path_str)
-        if path_str == 'all':
-            if 'yelp' in dt:
-                run_all_yelp()
-            elif 'amazon' in dt:
-                run_all_amazon_200k()
-            elif 'douban' in dt:
-                run_all_douban()
-            elif 'epinions' in dt:
-                run_all_epinions()
-            elif 'ciao' in dt:
-                run_all_epinions()
-            elif 'ciaodvd' in dt:
-                run_all_epinions()
-        elif path_str == 'merge':
-            run_all_yelp_merge()
-        elif path_str == 'all-rank':
-            if 'yelp' in dt:
-                run_all_yelp_by_rank()
-            elif 'amazon' in dt:
-                run_all_amazon_by_rank()
-            elif 'epinions' in dt:
-                run_all_epinions_by_rank()
-            elif 'ciaodvd' in dt:
-                run_all_ciaodvd_by_rank()
-        elif path_str == 'cikm':
-            dir_ = 'data/cikm/yelp/exp_split/%s/' % (split_num)
-            print 'data: %s, path_str: %s' % (dir_, path_str)
-            run_cikm_yelp()
-        elif path_str == 'comb':
-            if 'yelp' in dt:
-                pass
-            elif 'amazon' in dt:
-                run_amazon_200k_combs()
-        else:
-            run(path_str)
+        run_all_epinions()
     else:
         print 'please speficy the data and path_str'
         sys.exit(0)
