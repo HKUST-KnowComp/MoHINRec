@@ -3,7 +3,7 @@ The code CIKM 19 paper "[Motif Enhanced Recommendation over Heterogeneous Inform
 
 Readers are welcomed to fork this repository to reproduce the experiments and follow our work. Please kindly cite our paper
 
-    @inproceedings{zhao2017meta,
+    @inproceedings{zhao2019mohinrec,
     title={Motif Enhanced Recommendation over Heterogeneous Information Network},
     author={Zhao, Huan and Zhou, Yingqi and Song, Yangqiu and Lee, Dik Lun},
     booktitle={CIKM},
