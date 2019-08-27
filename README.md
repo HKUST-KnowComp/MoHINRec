@@ -10,8 +10,7 @@ Readers are welcomed to fork this repository to reproduce the experiments and fo
     year={2019}
     }
     
-We use Epinions Dataset and Ciao Dataset from https://www.cse.msu.edu/~tangjili/trust.html. Any problems, you can create an issue. Note that these two datasets are provied by Prof. [Jiliang Tang](https://www.cse.msu.edu/~tangjili/trust.html), thus if you use these datasets for your paper, please cite the authors' paper as instructed in the website https://www.cse.msu.edu/~tangjili/trust.html 
-
+We use Epinions Dataset and CiaoDVD Datasets from https://www.cse.msu.edu/~tangjili/trust.html and https://www.librec.net/datasets.html, respectively. Any problems, you can create an issue.
 ## Instructions
 
 For the sake of ease, a quick instruction is given for readers to reproduce the whole process on Epinions dataset. Note that the programs are testd on **Linux(CentOS release 6.9), Python 2.7 and Numpy 1.14.0 from Anaconda 4.3.6.**
