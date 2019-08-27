@@ -1,5 +1,5 @@
 # MoHINRec
-The code CIKM 19 paper "[Motif Enhanced Recommendation over Heterogeneous Information Network]"(https://arxiv.org/abs/1908.09701)
+The code CIKM 19 paper "[Motif Enhanced Recommendation over Heterogeneous Information Network](https://arxiv.org/abs/1908.09701)"
 
 Readers are welcomed to fork this repository to reproduce the experiments and follow our work. Please kindly cite our paper
 
